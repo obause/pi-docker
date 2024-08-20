@@ -68,6 +68,24 @@ pip install numpy pandas flask
 # Clone your git repository (if needed)
 git clone https://github.com/obause/pi-docker.git /home/$SUDO_USER/pi_setup
 
+# Configure static IP for Ethernet and Wi-Fi
+cat <<EOT >> /etc/dhcpcd.conf
+# Static IP configuration for eth0
+interface eth0
+static ip_address=192.168.1.138/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1 8.8.8.8
+
+# Static IP configuration for wlan0
+interface wlan0
+static ip_address=192.168.1.137/24
+static routers=192.168.1.1
+static domain_name_servers=192.168.1.1 8.8.8.8
+EOT
+
+# Restart dhcpcd service to apply network changes
+systemctl restart dhcpcd
+
 # Custom configurations (e.g., setting up .bashrc)
 echo "alias ll='ls -la'" >> /home/$SUDO_USER/.zshrc
 echo "cd ~/my_project" >> /home/$SUDO_USER/.zshrc
