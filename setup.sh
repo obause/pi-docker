@@ -60,8 +60,8 @@ chmod 700 /home/$SUDO_USER/.ssh
 chown -R $SUDO_USER:$SUDO_USER /home/$SUDO_USER/.ssh
 
 # Configure UFW (firewall)
-ufw allow OpenSSH
-ufw enable
+#ufw allow OpenSSH
+#ufw enable
 
 # Set up Python virtual environment
 mkdir /home/$SUDO_USER/pi_setup
