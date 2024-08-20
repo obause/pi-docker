@@ -73,7 +73,7 @@ source venv/bin/activate
 pip install numpy pandas flask
 
 # Clone your git repository (if needed)
-git clone https://github.com/obause/pi-docker.git /home/$SUDO_USER/pi_setup
+git clone https://github.com/obause/pi-docker.git #/home/$SUDO_USER/pi_setup
 
 # Configure static IP for Ethernet and Wi-Fi
 cat <<EOT >> /etc/dhcpcd.conf
