@@ -25,9 +25,8 @@ apt-get install -y docker-compose
 # Install LazyDocker using the recommended script
 su - $SUDO_USER -c 'curl https://raw.githubusercontent.com/jesseduffield/lazydocker/master/scripts/install_update_linux.sh | bash'
 
-# Install Zsh and Oh My Zsh
-apt-get install -y zsh
-su - $SUDO_USER -c 'sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
+# Install Oh My Zsh without prompt
+su - $SUDO_USER -c 'RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
 
 # Set Zsh as the default shell for the user
 chsh -s $(which zsh) $SUDO_USER
