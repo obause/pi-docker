@@ -28,7 +28,7 @@ services:
       TZ: ${TZ}
       WEBPASSWORD: ${WEBPASSWORD}
       #DNS1: ${DNSSERVER1}
-      äDNS2: ${DNSSERVER2}
+      #DNS2: ${DNSSERVER2}
       #FTLCONF_LOCAL_IPV4: 192.168.41.55
       #PROXY_LOCATION: pihole
       #VIRTUAL_HOST: pihole.yourDomain.lan
