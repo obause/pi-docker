@@ -15,11 +15,19 @@ apt-get install -y git vim htop curl wget tmux
 # Install development tools
 apt-get install -y build-essential python3 python3-pip python3-venv
 
-# Install Docker and Docker Compose
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-rm get-docker.sh
-usermod -aG docker $SUDO_USER
+# Check if Docker is already installed
+if ! command -v docker &> /dev/null
+then
+    echo "Docker is not installed. Installing Docker..."
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sh get-docker.sh
+    rm get-docker.sh
+    usermod -aG docker $SUDO_USER
+else
+    echo "Docker is already installed. Skipping Docker installation."
+fi
+
+# Install Docker Compose (this will update it if already installed)
 apt-get install -y docker-compose
 
 # Install LazyDocker using the recommended script
