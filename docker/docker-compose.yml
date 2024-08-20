@@ -22,7 +22,7 @@ services:
       - "53:53/udp"
       - "67:67/udp" # DHCP Server Usage
       - "${HTTPPORT}:80/tcp"
-      - "${HTTPSPORT}:443/tcp"
+      #- "${HTTPSPORT}:443/tcp"
     environment:
       TZ: ${TZ}
       WEBPASSWORD: ${WEBPASSWORD}
