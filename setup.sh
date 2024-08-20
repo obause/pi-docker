@@ -39,6 +39,10 @@ su - $SUDO_USER -c 'RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.github.com
 # Set Zsh as the default shell for the user
 chsh -s $(which zsh) $SUDO_USER
 
+# Install Zsh Plugins
+git clone https://github.com/zsh-users/zsh-autosuggestions $ZSH_CUSTOM/plugins/zsh-autosuggestions
+git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM:-~/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
+
 # Install additional software
 apt-get install -y fail2ban mc curl wget rsync nano screen ffmpeg
 
