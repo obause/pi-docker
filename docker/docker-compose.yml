@@ -1,63 +1,182 @@
-version: "3.7"
 
-# https://github.com/pi-hole/docker-pi-hole/blob/master/README.md
+networks:
+  proxy:
+    driver: bridge
+    name: proxy
+  app-nw:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: br-pihole
+
+volumes:
+  portainer_data:
 
 services:
-  nginx-proxy:
-    image: nginxproxy/nginx-proxy
-    container_name: nginx-proxy
-    ports:
-      - '80:80'
-    environment:
-      DEFAULT_HOST: pihole.bause.local
-    volumes:
-      - '/var/run/docker.sock:/tmp/docker.sock'
+  # -- Sicherer Socket-Proxy (Least Privilege) --
+  socket-proxy:
+    image: tecnativa/docker-socket-proxy:latest
     restart: always
+    environment:
+      CONTAINERS: 1
+      IMAGES: 1
+      NETWORKS: 1
+      SERVICES: 1
+      TASKS: 1
+      VOLUMES: 1
+      # Alle anderen Variablen default 0 => kein Zugriff
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks: [proxy]
 
+  # -- Traefik Reverse Proxy --
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: always
+    depends_on: [socket-proxy]
+    command: []
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/dynamic:/dynamic:ro
+      - ./traefik/certs:/certs:ro
+      # ACME-Ordner nur falls du irgendwann Let's Encrypt nutzt:
+      - ./traefik/acme:/acme
+    networks: [proxy]
+    labels:
+      traefik.enable: "true"
+      # Dashboard intern absichern: nur lokal per Hostname
+      traefik.http.routers.traefik.rule: Host(`traefik.bause.lan`)
+      traefik.http.routers.traefik.entrypoints: websecure
+      traefik.http.routers.traefik.tls: "true"
+      traefik.http.routers.traefik.service: api@internal
+
+  # -- Portainer (HTTP hinter Traefik; TLS endet bei Traefik) --
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock # setup ohne Socket-Proxy
+    # Zugriff auf Docker via Socket-Proxy statt direkt
+    #command: -H tcp://socket-proxy:2375
+    command: -H unix:///var/run/docker.sock
+    networks: [proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "proxy" 
+      traefik.http.routers.portainer.rule: Host(`portainer.bause.lan`)
+      traefik.http.routers.portainer.entrypoints: websecure
+      traefik.http.routers.portainer.tls: "true"
+      traefik.http.services.portainer.loadbalancer.server.port: "9000"
+
+  # -- Pi-hole (DNS-Ports bleiben offen, UI über Traefik) --
   pihole:
     image: pihole/pihole:latest
     container_name: pihole
     restart: always
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      - "67:67/udp" # DHCP Server Usage
-      - "${HTTPPORT}:80/tcp"
-      #- "${HTTPSPORT}:443/tcp"
     environment:
       TZ: ${TZ}
       WEBPASSWORD: ${WEBPASSWORD}
-      #DNS1: ${DNSSERVER1}
-      #DNS2: ${DNSSERVER2}
-      #FTLCONF_LOCAL_IPV4: 192.168.41.55
-      #PROXY_LOCATION: pihole
-      #VIRTUAL_HOST: pihole.yourDomain.lan
-      #VIRTUAL_PORT: 80
-      #CONDITIONAL_FORWARDING: ${CONDITIONAL_FORWARDING}
-      #CONDITIONAL_FORWARDING_IP: ${CONDITIONAL_FORWARDING_IP}
-      #CONDITIONAL_FORWARDING_DOMAIN: ${CONDITIONAL_FORWARDING_DOMAIN}
-      #CONDITIONAL_FORWARDING_REVERSE: ${CONDITIONAL_FORWARDING_REVERSE}
-    # Volumes store your data between container upgrades
+      FTLCONF_LOCAL_IPV4: 192.168.178.5
     volumes:
       - ./pihole/conf/:/etc/pihole/
       - ./pihole/dnsmasq.d/conf/:/etc/dnsmasq.d/
-      # run `touch ./var-log/pihole.log` first unless you like errors
-      - './var-log/pihole.log:/var/log/pihole.log'
-    dns:
-      - 127.0.0.1
-      - 1.1.1.1
+      - ./var-log/pihole.log:/var/log/pihole.log
+    networks: [app-nw, proxy]
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      # DHCP ggf.:
+      # - "67:67/udp"
     labels:
-        com.centurylinklabs.watchtower.enable: "true"
-    # Recommended but not required (DHCP needs NET_ADMIN)
-    #   https://github.com/pi-hole/docker-pi-hole#note-on-capabilities
-    #cap_add:
-    #  - NET_ADMIN
-    networks:
-      - app-nw
+      traefik.enable: "true"
+      traefik.docker.network: "proxy" 
+      traefik.http.routers.pihole.rule: Host(`pihole.bause.lan`)
+      traefik.http.routers.pihole.entrypoints: websecure
+      traefik.http.routers.pihole.tls: "true"
+      traefik.http.services.pihole.loadbalancer.server.port: "80"
+      # Optional: feste Prefix-Weiterleitung auf /admin
+      traefik.http.middlewares.pihole-admin.redirectregex.regex: "^https?://([^/]+)/?$"
+      traefik.http.middlewares.pihole-admin.redirectregex.replacement: "https://$${1}/admin"
+      traefik.http.middlewares.pihole-admin.redirectregex.permanent: "true"
+      traefik.http.routers.pihole.middlewares: pihole-admin
 
-networks:
-  app-nw:
-    internal: false
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.name: br-pihole
+  # -- WireGuard (nicht über Traefik) --
+  wg-easy:
+    container_name: wg-easy
+    image: ghcr.io/wg-easy/wg-easy
+    environment:
+      - PASSWORD=test
+      - WG_HOST=217.252.201.193
+    volumes:
+      - ./wireguard:/etc/wireguard
+      - /lib/modules:/lib/modules
+    ports:
+      - "51820:51820/udp"
+      - "51821:51821/tcp"
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv4.conf.all.src_valid_mark=1
+    networks: [app-nw]
+
+  # -- Cloudflare-DDNS (host network wie gehabt) --
+  cloudflare-ddns:
+    container_name: dyndns
+    image: favonia/cloudflare-ddns:latest
+    network_mode: host
+    restart: always
+    user: "1000:1000"
+    read_only: true
+    cap_drop: [all]
+    security_opt: [no-new-privileges:true]
+    environment:
+      - CF_API_TOKEN=${CF_API_TOKEN}
+      - DOMAINS=${DOMAINS}
+      - PROXIED=${PROXIED}
+      - UPDATE_CRON=${UPDATE_CRON}
+
+  # -- Code-Server (HTTPS intern -> sag Traefik "scheme=https") --
+  code-server:
+    image: lscr.io/linuxserver/code-server:latest
+    container_name: code-server
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=${TZ}
+      - PASSWORD=${PASSWORD}
+      - SUDO_PASSWORD=${SUDO_PASSWORD}
+      - DEFAULT_WORKSPACE=${DEFAULT_WORKSPACE}
+    volumes:
+      - ./code-server:/config
+    restart: unless-stopped
+    networks: [proxy]
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "proxy" 
+      traefik.http.routers.code.rule: Host(`code.bause.lan`)
+      traefik.http.routers.code.entrypoints: websecure
+      traefik.http.routers.code.tls: "true"
+      traefik.http.services.code.loadbalancer.server.port: "8443"
+      traefik.http.services.code.loadbalancer.server.scheme: "https"
+
+  # -- Home Assistant (network_mode: host für mDNS und Zigbee) --
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    container_name: homeassistant
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - TZ=${TZ}
+    volumes:
+      - ./home-assistant:/config
+      - /etc/localtime:/etc/localtime:ro
+    # devices:
+    #   - /dev/serial/by-id/usb-<DEIN_DONGLE>:/dev/ttyUSB0

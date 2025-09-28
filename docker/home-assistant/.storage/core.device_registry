@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "minor_version": 12,
+  "key": "core.device_registry",
+  "data": {
+    "devices": [
+      {"area_id":null,"config_entries":["01K68RG95RQFT0YJB2B4BPG3RX"],"config_entries_subentries":{"01K68RG95RQFT0YJB2B4BPG3RX":[null]},"configuration_url":null,"connections":[],"created_at":"2025-09-28T18:14:02.687835+00:00","disabled_by":null,"entry_type":"service","hw_version":null,"id":"5ecb720c2ef1d7ecd07863d83259c452","identifiers":[["sun","01K68RG95RQFT0YJB2B4BPG3RX"]],"labels":[],"manufacturer":null,"model":null,"model_id":null,"modified_at":"2025-09-28T18:14:02.687966+00:00","name_by_user":null,"name":"Sun","primary_config_entry":"01K68RG95RQFT0YJB2B4BPG3RX","serial_number":null,"sw_version":null,"via_device_id":null},
+      {"area_id":null,"config_entries":["01K68RGRBCP7WC9XYZWNSYSHXP"],"config_entries_subentries":{"01K68RGRBCP7WC9XYZWNSYSHXP":[null]},"configuration_url":null,"connections":[["bluetooth","E4:5F:01:89:37:C2"]],"created_at":"2025-09-28T18:14:18.221658+00:00","disabled_by":null,"entry_type":null,"hw_version":null,"id":"1f0827a24bc6ab142c25b8d9ccc18fd0","identifiers":[],"labels":[],"manufacturer":"Raspberry Pi Trading Ltd","model":"Unknown","model_id":null,"modified_at":"2025-09-28T18:14:18.221753+00:00","name_by_user":null,"name":"hci0 (E4:5F:01:89:37:C2)","primary_config_entry":"01K68RGRBCP7WC9XYZWNSYSHXP","serial_number":null,"sw_version":"Unknown","via_device_id":null},
+      {"area_id":null,"config_entries":["01K68RGCREKPG78AJAMPCPCVFH"],"config_entries_subentries":{"01K68RGCREKPG78AJAMPCPCVFH":[null]},"configuration_url":"homeassistant://config/backup","connections":[],"created_at":"2025-09-28T18:14:18.394094+00:00","disabled_by":null,"entry_type":"service","hw_version":null,"id":"5be1ea0cdc29ecb65b20ea908385e897","identifiers":[["backup","backup_manager"]],"labels":[],"manufacturer":"Home Assistant","model":"Home Assistant Backup","model_id":null,"modified_at":"2025-09-28T18:14:18.394200+00:00","name_by_user":null,"name":"Backup","primary_config_entry":"01K68RGCREKPG78AJAMPCPCVFH","serial_number":null,"sw_version":"2025.9.4","via_device_id":null}
+    ],
+    "deleted_devices": []
+  }
+}

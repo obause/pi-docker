@@ -100,6 +100,7 @@ systemctl restart dhcpcd
 # Custom configurations (e.g., setting up .bashrc)
 echo "alias ll='ls -la'" >> /home/$SUDO_USER/.zshrc
 echo "cd ~/my_project" >> /home/$SUDO_USER/.zshrc
+echo "export PATH=$PATH:$HOME/.local/bin" >> /home/$SUDO_USER/.zshrc
 
 # Reboot to apply changes
 reboot

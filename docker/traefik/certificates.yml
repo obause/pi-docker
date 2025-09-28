@@ -1,0 +1,4 @@
+tls:
+  certificates:
+    - certFile: "/certs/bause.lan.crt"
+      keyFile: "/certs/bause.lan.key"

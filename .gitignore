@@ -1,0 +1,61 @@
+# General
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker
+**/docker/data/
+**/docker/pihole/conf/config_backups/
+**/docker/pihole/conf/gravity_backups/
+**/docker/pihole/conf/listsCache/
+**/docker/pihole/conf/hosts/
+**/docker/pihole/conf/migration_backup*/
+**/docker/pihole/conf/pihole-FTL.db*
+**/docker/pihole/conf/gravity.db*
+**/docker/pihole/conf/dhcp.leases
+**/docker/pihole/conf/pihole.log
+**/docker/pihole/pihole.log
+**/docker/pihole/pihole.cron
+**/docker/pihole/pihole.service
+**/docker/pihole/docker_run.sh
+**/docker/pihole/conf/tls*.crt
+**/docker/pihole/conf/tls*.pem
+
+# VS Code
+.vscode/
+**/docker/code-server/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+.Python
+env/
+venv/
+ENV/
+.venv/
+bin/
+lib/
+lib64/
+include/
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Jupyter Notebook
+.ipynb_checkpoints/
+
+# System
+*.orig
+*.old
+*.backup
+
+# Zsh
+zsh/
