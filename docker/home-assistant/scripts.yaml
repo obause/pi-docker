@@ -1,0 +1,7 @@
+voice_weather_forecasts_full_llm_script:
+  alias: Voice - Weather Forecasts - Full LLM script
+  use_blueprint:
+    path: TheFes/3_voice_weather_forecast_full_llm.yaml
+    input:
+      weather_entity: weather.forecast_home
+  description: ''

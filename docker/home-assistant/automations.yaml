@@ -1,1 +1,987 @@
-[]
+- id: '1759689956479'
+  alias: SWITCH_04_01_01
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 9e099dbf0245d6ce9f0771186b63bb15
+    type: action
+    subtype: 1_single
+    metadata: {}
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.toggle
+    metadata: {}
+    data: {}
+    target:
+      device_id: 08e324cc087dc7bd16c450d353b3f57a
+  mode: single
+- id: '1759746336625'
+  alias: SWITCH_04_01_02
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 9e099dbf0245d6ce9f0771186b63bb15
+    type: action
+    subtype: 1_double
+    trigger: device
+  conditions: []
+  actions:
+  - device_id: 08e324cc087dc7bd16c450d353b3f57a
+    domain: light
+    entity_id: 6d24d8bee0bff6ca32f3b9a6284c94a0
+    type: brightness_increase
+  mode: single
+- id: '1759746388978'
+  alias: SWITCH_04_01_03
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 9e099dbf0245d6ce9f0771186b63bb15
+    type: action
+    subtype: 1_hold
+    trigger: device
+  conditions: []
+  actions:
+  - device_id: 08e324cc087dc7bd16c450d353b3f57a
+    domain: light
+    entity_id: 6d24d8bee0bff6ca32f3b9a6284c94a0
+    type: brightness_decrease
+  mode: single
+- id: '1759746437564'
+  alias: SWITCH_04_02_01
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 9e099dbf0245d6ce9f0771186b63bb15
+    type: action
+    subtype: 2_single
+    trigger: device
+  conditions: []
+  actions:
+  - type: toggle
+    device_id: fef4413aa1b295faf6c8c2ad850339c2
+    entity_id: 89b254177b99749ef604fc5b7056035c
+    domain: light
+  mode: single
+- id: '1763403139212'
+  alias: Wohnzimmer Licht bei Anwesenheit
+  description: ''
+  triggers:
+  - type: occupied
+    device_id: bd5c6b0f4d8a0609f92b8888cbec9e1c
+    entity_id: 64371309e873e460bd6a4f1e89a64f84
+    domain: binary_sensor
+    metadata:
+      secondary: false
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: a6fd06c236a747783cf1b7bbb03bfc26
+    entity_id: 77abea0c8e7cf00bccfbf18bbafe84c5
+    domain: light
+    brightness_pct: 50
+  mode: single
+- id: '1763403272332'
+  alias: Abwesenheit Wohnzimmer Licht aus
+  description: ''
+  triggers:
+  - type: not_occupied
+    device_id: bd5c6b0f4d8a0609f92b8888cbec9e1c
+    entity_id: 64371309e873e460bd6a4f1e89a64f84
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: a6fd06c236a747783cf1b7bbb03bfc26
+    entity_id: 77abea0c8e7cf00bccfbf18bbafe84c5
+    domain: light
+  mode: single
+- id: '1763575061303'
+  alias: Kleiderschrank Licht ein - Schalter
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: f8daea90a0587f36f0ca12b488603a9b
+    type: action
+    subtype: 'on'
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_on
+    device_id: 413ebe91c670a3745cd01ea5edc07838
+    entity_id: 0b7403cb07ec9f6a881fa91674362343
+    domain: light
+    brightness_pct: 100
+    flash: long
+  mode: single
+- id: '1763576280422'
+  alias: 'Kleiderschrank Licht aus - Schalter '
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: f8daea90a0587f36f0ca12b488603a9b
+    type: action
+    subtype: 'off'
+    trigger: device
+  conditions: []
+  actions:
+  - type: turn_off
+    device_id: 413ebe91c670a3745cd01ea5edc07838
+    entity_id: 0b7403cb07ec9f6a881fa91674362343
+    domain: light
+  mode: single
+- id: '1763578397951'
+  alias: Stehlampe Fernseher umschalten - Schalter
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 56dbdf43093d1d379c8f07742b48f09d
+    type: action
+    subtype: 1_single
+    metadata: {}
+    trigger: device
+  conditions: []
+  actions:
+  - type: toggle
+    device_id: c2c64444f64575c07edd241648a61e07
+    entity_id: a03c5b994a5d450f5d92c5483815e94f
+    domain: light
+  mode: single
+- id: '1763578519762'
+  alias: 'Stehlampe Sofa umschalten - Schalter '
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 56dbdf43093d1d379c8f07742b48f09d
+    type: action
+    subtype: 2_single
+    trigger: device
+  conditions: []
+  actions:
+  - type: toggle
+    device_id: a6fd06c236a747783cf1b7bbb03bfc26
+    entity_id: 77abea0c8e7cf00bccfbf18bbafe84c5
+    domain: light
+  mode: single
+- id: '1763971848164'
+  alias: SWITCH_04_03_01
+  description: ''
+  triggers:
+  - domain: mqtt
+    device_id: 9e099dbf0245d6ce9f0771186b63bb15
+    type: action
+    subtype: 3_single
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.toggle
+    metadata: {}
+    data: {}
+    target:
+      entity_id: light.arbeitszimmer_deckenlicht
+  mode: single
+- id: '1763976627784'
+  alias: Waschmaschine Automation
+  description: ''
+  use_blueprint:
+    path: Blackshome/appliance-notifications.yaml
+    input:
+      power_sensor: sensor.plug_03_power
+      running_dead_zone: 5
+      start_appliance_power: 15
+      end_time_delay: 3
+      include_start_notify: enable_start_notify_options
+      start_notify_device:
+      - 16b44fb78b0b8d82a868b5f1411ee2d1
+      - 498277a3da3d515e78bfd5af48a8ae42
+      start_title: Waschmaschine
+      start_message: Waschmaschine wurde gestartet
+      include_end_notify: enable_end_notify_options
+      end_notify_device:
+      - 16b44fb78b0b8d82a868b5f1411ee2d1
+      - 498277a3da3d515e78bfd5af48a8ae42
+      end_message_title: Waschmaschine
+      end_message: Waschmaschine ist fertig!
+      include_run_status: run_status_enabled
+      run_status_entity: input_select.waschmaschine_status
+      run_status_start: Waschmaschine läuft
+      run_status_end: Wäsche ist fertig!
+      run_status_end_reminder: Waschmaschine noch nicht geleert!
+      run_status_end_attended: Waschmaschine bereit
+      include_power_tracking: enable_power_tracking
+      power_consumption_sensor: sensor.plug_03_energy
+      start_power_consumption: input_number.waschmaschine_start
+      end_power_consumption: input_number.waschmaschine_ende
+      include_runtime_tracking: enable_runtime_tracking
+      runtime_tracking_helper: input_text.waschmaschine_laufzeit
+      runtime_tracking_end_message: Gesamtlaufzeit
+      include_duration_tracking: enable_duration_tracking
+      end_message_duration_tracking: Laufzeit
+      include_cycle_counter: enable_cycle_counter
+      cycle_counter_helper: counter.waschmaschine_zyklen
+      cycle_counter_end_message: Gesamtzyklen
+      include_service_reminder: enable_service_reminder
+      service_reminder_counter_helper: counter.waschmaschine_service_zyklen
+      service_reminder_end_message: ⚠️ Zeit einen Service für die Waschmaschine durchzuführen!
+- id: '1764086374849'
+  alias: Waschmaschine - Laufzeit-Timer steuern
+  description: ''
+  triggers:
+  - entity_id:
+    - input_select.waschmaschine_status
+    to:
+    - Waschmaschine läuft
+    id: start
+    trigger: state
+  - entity_id:
+    - input_select.waschmaschine_status
+    to:
+    - Wäsche ist fertig!
+    - Waschmaschine bereit
+    id: stop
+    trigger: state
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: start
+      sequence:
+      - target:
+          entity_id: timer.waschmaschine_laufzeit
+        action: timer.start
+    - conditions:
+      - condition: trigger
+        id: stop
+      sequence:
+      - target:
+          entity_id: timer.waschmaschine_laufzeit
+        action: timer.cancel
+  mode: single
+- id: '1764234260794'
+  alias: Terassentür geöffnet Benachrichtigung
+  description: ''
+  triggers:
+  - type: opened
+    device_id: 095211aa46a902f2d2e9938038d68fbb
+    entity_id: 62835f851ce7130c390b8021643991ab
+    domain: binary_sensor
+    trigger: device
+    for:
+      hours: 0
+      minutes: 30
+      seconds: 0
+  conditions: []
+  actions:
+  - action: notify.notify
+    metadata: {}
+    data:
+      message: Terassentür ist seit über 30 Minuten offen!
+      title: Terassentür
+  - action: notify.alexa_media_uberall
+    metadata: {}
+    data: {}
+  mode: single
+- id: '1764234782669'
+  alias: 'Sicherheitscheck: 22 Uhr Fenster/Türen prüfen'
+  description: Prüft jeden Abend um 22:00 Uhr, ob Fenster oder Türen noch offen sind
+    und meldet welche.
+  triggers:
+  - at: '22:00:00'
+    trigger: time
+  conditions:
+  - condition: template
+    value_template: "{{ states.binary_sensor \n   | selectattr('state', 'eq', 'on')
+      \n   | selectattr('attributes.device_class', 'defined') \n   | selectattr('attributes.device_class',
+      'in', ['window', 'door', 'garage_door']) \n   | list | count > 0 }}\n"
+  actions:
+  - action: notify.notify
+    data:
+      title: ⚠️ Fenster/Türen noch offen!
+      message: "Es ist 22 Uhr und folgende Fenster/Türen sind noch nicht geschlossen:
+        \ {{ states.binary_sensor \n   | selectattr('state', 'eq', 'on') \n   | selectattr('attributes.device_class',
+        'defined') \n   | selectattr('attributes.device_class', 'in', ['window', 'door',
+        'garage_door']) \n   | map(attribute='name') \n   | list \n   | join(', ')
+        }}\n"
+- id: '1764235251377'
+  alias: 'Sicherheit: Statusbericht (Personalisiert)'
+  description: Sendet Statusbericht nur an die Person, die das Haus verlässt.
+  triggers:
+  - entity_id: person.ihr_name
+    from: home
+    trigger: state
+  - entity_id: person.name_freundin
+    from: home
+    trigger: state
+  conditions: []
+  actions:
+  - variables:
+      notification_target: "{% if trigger.entity_id == 'person.ihr_name' %}\n  notify.ihr_persoenlicher_notify_dienst\n{%
+        elif trigger.entity_id == 'person.name_freundin' %}\n  notify.persoenlicher_notify_dienst_freundin\n{%
+        else %}\n  notify.notify # Fallback, falls der Trigger unerwartet ist\n{%
+        endif %}\n"
+      open_items: "{% set open = states.binary_sensor \n   | selectattr('state', 'eq',
+        'on') \n   | selectattr('attributes.device_class', 'defined') \n   | selectattr('attributes.device_class',
+        'in', ['window', 'door', 'garage_door']) \n   | map(attribute='name') \n   |
+        list %}\n{{ open }}\n"
+  - choose:
+    - conditions: '{{ open_items | count > 0 }}'
+      sequence:
+      - data:
+          title: '⚠️ Achtung: Fenster/Türen offen!'
+          message: 'Sie haben das Haus verlassen, aber folgende Dinge sind noch offen:
+
+            {{ open_items | join('', '') }}
+
+            '
+        action: '{{ notification_target }}'
+    default:
+    - data:
+        title: ✅ Alles sicher
+        message: Sie haben das Haus verlassen. Alle Fenster und Türen sind geschlossen.
+      action: '{{ notification_target }}'
+- id: '1764357222952'
+  alias: Trockner Automation
+  description: ''
+  use_blueprint:
+    path: Blackshome/appliance-notifications.yaml
+    input:
+      power_sensor: sensor.plug_02_power
+      include_start_notify: enable_start_notify_options
+      start_notify_device:
+      - 16b44fb78b0b8d82a868b5f1411ee2d1
+      - 498277a3da3d515e78bfd5af48a8ae42
+      start_title: Trockner
+      start_message: Trockner wurde gestartet
+      include_end_notify: enable_end_notify_options
+      end_notify_device:
+      - 16b44fb78b0b8d82a868b5f1411ee2d1
+      - 498277a3da3d515e78bfd5af48a8ae42
+      end_message_title: Trockner
+      end_message: Trockner ist fertig!
+      include_run_status: run_status_enabled
+      run_status_entity: input_select.trockner_status
+      start_notify_icon: mdi:tumble-dryer
+      end_notify_icon: mdi:tumble-dryer
+      run_status_start: Trockner läuft
+      run_status_end: Trockner ist fertig!
+      run_status_end_reminder: Trockner noch nicht geleert!
+      run_status_end_attended: Trockner bereit
+      include_power_tracking: enable_power_tracking
+      power_consumption_sensor: sensor.plug_02_energy
+      end_message_kwh: Verbrauch
+      start_power_consumption: input_number.trockner_start
+      end_power_consumption: input_number.trockner_ende
+      include_runtime_tracking: enable_runtime_tracking
+      runtime_tracking_helper: input_text.trockner_laufzeit
+      runtime_tracking_end_message: Gesamtlaufzeit
+      include_duration_tracking: enable_duration_tracking
+      end_message_duration_tracking: Laufzeit
+      include_cycle_counter: enable_cycle_counter
+      cycle_counter_helper: counter.trockner_zyklen
+      include_service_reminder: enable_service_reminder
+      service_reminder_counter_helper: counter.trockner_service_zyklen
+      service_reminder_end_message: ⚠️ Zeit für Service des Trockners
+- id: '1764358584439'
+  alias: Müllabfuhr Erinnerung
+  description: benachrichtigt einen tag vor dem nächsten abfuhrtermin
+  triggers:
+  - at: '19:00:00'
+    trigger: time
+  conditions:
+  - condition: template
+    value_template: '{{ state_attr(''sensor.nachster_termin'', ''DaysTo'') == 1 }}
+
+      '
+  actions:
+  - action: notify.notify
+    metadata: {}
+    data:
+      title: Müll morgen rausstellen
+      message: "{% set attrs = states.sensor.nachster_termin.attributes %} {% for
+        k, v in attrs.items() %}\n  {% if k not in ['DaysTo', 'friendly_name', 'icon']
+        %}\n    Morgen wird {{ v }} abgeholt ({{ k }}).\n  {% endif %}\n{% endfor
+        %}\n"
+  mode: single
+- id: '1764361299325'
+  alias: Test Alexa
+  description: ''
+  triggers:
+  - trigger: time
+    at: '22:02:00'
+  actions:
+  - action: notify.alexa_media
+    metadata: {}
+    data:
+      message: Dies ist ein Test!
+      title: Test
+  - action: notify.alexa_media_wohnung
+    metadata: {}
+    data:
+      message: Test
+      title: Test
+  mode: single
+- id: '1764365093872'
+  alias: 'Sicherheit: Statusbericht beim Verlassen (Ole & Vanessa)'
+  description: Sendet Statusbericht an Ole oder Vanessa, wenn sie das Haus verlassen.
+  triggers:
+  - entity_id: person.ole
+    from: home
+    trigger: state
+  - entity_id: person.vanessa
+    from: home
+    trigger: state
+  conditions: []
+  actions:
+  - variables:
+      notification_target: "{% if trigger.entity_id == 'person.ole' %}\n  notify.mobile_app_ole_s24_ultra\n{%
+        elif trigger.entity_id == 'person.vanessa' %}\n  notify.mobile_app_vanessas_iphone\n{%
+        else %}\n  notify.notify\n{% endif %}\n"
+      open_items: "{% set open = states.binary_sensor \n   | selectattr('state', 'eq',
+        'on') \n   | selectattr('attributes.device_class', 'defined') \n   | selectattr('attributes.device_class',
+        'in', ['window', 'door', 'garage_door']) \n   | map(attribute='name') \n   |
+        list %}\n{{ open }}\n"
+  - choose:
+    - conditions:
+      - condition: template
+        value_template: '{{ open_items | count > 0 }}'
+      sequence:
+      - action: '{{ notification_target }}'
+        data:
+          title: ⚠️ Warte! Es ist noch was offen
+          message: 'Du hast das Haus verlassen, aber folgende Dinge sind noch offen:
+
+            {{ open_items | join('', '') }}
+
+            '
+          data:
+            push:
+              sound:
+                name: default
+                critical: 1
+    default:
+    - action: '{{ notification_target }}'
+      data:
+        title: ✅ Alles sicher
+        message: Du hast das Haus verlassen. Alle Fenster und Türen sind zu.
+  mode: single
+- id: '1764422096593'
+  alias: Arbeitszimmer Lichtschalter AN
+  description: ''
+  triggers:
+  - type: powered
+    device_id: 7697988543e142b712a9078256175af7
+    entity_id: e8c35c49b7bcb6b458ae605a0e494bd0
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_on
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - light.arbeitszimmer_deckenlicht
+      - light.stehlampe_schreibtisch
+      - light.nanoleaf
+      - light.stehlampe_flur_dg
+  mode: single
+- id: '1764422235973'
+  alias: Arbeitszimmer Lichtschalter AUS
+  description: ''
+  triggers:
+  - type: not_powered
+    device_id: 7697988543e142b712a9078256175af7
+    entity_id: e8c35c49b7bcb6b458ae605a0e494bd0
+    domain: binary_sensor
+    trigger: device
+  conditions: []
+  actions:
+  - action: light.turn_off
+    metadata: {}
+    data: {}
+    target:
+      entity_id:
+      - light.arbeitszimmer_deckenlicht
+      - light.stehlampe_schreibtisch
+      - light.nanoleaf
+      - light.stehlampe_flur_dg
+  mode: single
+- id: '1764430127355'
+  alias: 'Briefkasten: Post bekommen'
+  description: Setzt Flag für heute und schickt eine Push-Nachricht
+  triggers:
+  - entity_id:
+    - binary_sensor.window_09_contact
+    from:
+    - 'off'
+    to:
+    - 'on'
+    trigger: state
+  conditions:
+  - condition: time
+    after: 06:00:00
+    before: '22:00:00'
+  actions:
+  - target:
+      entity_id: input_boolean.post_heute
+    action: input_boolean.turn_on
+  - action: notify.notify
+    metadata: {}
+    data:
+      message: Es wurde Post in den Briefkasten geworfen.
+      title: "Post ist da \U0001F4EC"
+  mode: single
+- id: '1764430546297'
+  alias: 'Briefkasten: Post-Status täglich zurücksetzen'
+  description: ''
+  triggers:
+  - at: 00:02:00
+    trigger: time
+  actions:
+  - target:
+      entity_id: input_boolean.briefkasten_post_heute
+    action: input_boolean.turn_off
+  mode: single
+- id: '1764432971118'
+  alias: Paket eingeworfen heute
+  description: Setzt Flag für heute und schickt eine Push-Nachricht
+  triggers:
+  - entity_id:
+    - binary_sensor.window_10_contact
+    from:
+    - 'off'
+    to:
+    - 'on'
+    trigger: state
+  conditions:
+  - condition: time
+    after: 06:00:00
+    before: '22:00:00'
+  actions:
+  - target:
+      entity_id: input_boolean.paket_heute
+    action: input_boolean.turn_on
+    data: {}
+  - action: notify.notify
+    metadata: {}
+    data:
+      message: Es wurde ein Paket in den Einwurf geworfen.
+      title: "Paket ist da \U0001F4E6"
+  mode: single
+- id: '1764433094565'
+  alias: 'Briefkasten: Paket Status täglich zurücksetzen'
+  description: ''
+  triggers:
+  - at: 00:02:00
+    trigger: time
+  conditions: []
+  actions:
+  - target:
+      entity_id: input_boolean.paket_heute
+    action: input_boolean.turn_off
+  mode: single
+- id: '1764447730215'
+  alias: Low Battery Notifications & Actions
+  description: ''
+  use_blueprint:
+    path: Blackshome/low-battery-notifications-and-actions.yaml
+    input:
+      include_button: enable_button_trigger
+      button_entity: input_button.batterien_check
+      include_time: time_enabled
+      time: '18:00:00'
+      weekday_options:
+      - sun
+      include_easy_notify: enable_easy_notify
+      notify_device:
+      - 16b44fb78b0b8d82a868b5f1411ee2d1
+      - 498277a3da3d515e78bfd5af48a8ae42
+      notify_title: "\U0001F50B Geringer Batteriestand"
+      notify_okay_message: "\U0001F50BAlle Batteriestände OK"
+      notify_icon: mdi:battery
+      notify_action_buttons: enable_to_do_list_button
+      to_do_list: todo.batterien_ersetzen
+      to_do_task_title: Batterien die ersetzt werden müssen
+      action_button_to_do: To-Do hinzufügen
+      action_button_cancel: Abbrechen
+      action_button_confirmation_title: Geringer Batteriestand Bestätigung
+      action_button_confirmation_message: Geräte mit geringem Batteriestand wurden
+        zur To-Do Liste hinzugefügt
+      include_persistent_notification: enable_persistent_okay_notification
+      persistent_notify_title: "\U0001FAAB Geringer Batteriestand"
+      persistent_notify_okay_message: Alle Batteriestände sehen gut aus
+      include_dashboard_notification: enable_dashboard_okay_notification
+      dashboard_notification_text_helper: input_text.batteriestande
+      dashboard_notify_okay_message: Alle Batteriestände sehen gut aus
+      exclude_sensors:
+        entity_id:
+        - sensor.s24_ultra_ole_battery_level
+        - sensor.vanessas_iphone_battery_level
+- id: '1764531024830'
+  alias: Smart Light - Flurlampe
+  description: ''
+  use_blueprint:
+    path: Blackshome/smart-light.yaml
+    input:
+      include_sun:
+      - sun_falling
+      - sun_rising
+      light_switch:
+        entity_id: light.lampe
+      include_light_control:
+      - use_brightness
+      - use_transition
+      light_transition_on: 2
+      light_transition_off: 5
+      include_dynamic_lighting: enable_sun_elevation_brightness
+      dynamic_lighting_max_brightness: 75
+      dynamic_lighting_boolean: input_boolean.flurlampe_dynamic_lightning_helfer
+      dynamic_lighting_dead_zone: 5
+      dynamic_lighting_state_control: enable_state_control
+      dynamic_lighting_state_control_entity: input_boolean.dynamic_lightning_flurlampe
+      include_night_lights: night_lights_enabled
+      night_lights_conditions:
+      - time_enabled
+      night_lights_after_time: 01:00:00
+      night_lights_before_time: 05:00:00
+      night_lights:
+        entity_id: light.lampe
+      include_night_light_control:
+      - if_lights_are_on_adjust_when_crossing_over
+      - use_brightness
+      - use_transition
+      night_light_brightness: 2
+      night_light_transition_on: 3
+- id: '1766942895766'
+  alias: Geschirrspüler - Status Benachrichtigung (fertig/abgebrochen/fehler)
+  description: Sendet Push bei fertig, abgebrochen, error oder actionrequired
+  triggers:
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - finished
+    trigger: state
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - error
+    trigger: state
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - actionrequired
+    trigger: state
+  - entity_id:
+    - sensor.geschirrspuler_programm_abgebrochen
+    to:
+    - present
+    - confirmed
+    trigger: state
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: state
+        entity_id: sensor.geschirrspuler_betriebszustand
+        state: finished
+      sequence:
+      - action: notify.notify
+        metadata: {}
+        data:
+          title: ✅Geschirrspüler fertig
+          message: ✅Programm fertig - Geschirr kann ausgeräumt werden
+    - conditions:
+      - condition: template
+        value_template: '{{ states(''sensor.geschirrspuler_programm_abgebrochen'')
+          in [''present'',''confirmed''] }}'
+      sequence:
+      - action: notify.notify
+        metadata: {}
+        data:
+          title: ⛔Geschirrspüler abgebrochen
+          message: ⛔Programm abgebrochen - Das Programm wurde abgebrochen
+    - conditions:
+      - condition: template
+        value_template: '{{ states(''sensor.geschirrspuler_betriebszustand'') in [''error'',''actionrequired'']
+          }}'
+      sequence:
+      - action: notify.notify
+        metadata: {}
+        data:
+          title: ❗Geschirrspüler Fehler
+          message: "{% if is_state('sensor.geschirrspuler_betriebszustand','error')
+            %}\n  Fehler ❗ Bitte prüfen.\n{% else %}\n  Aktion erforderlich ❗ Bitte
+            prüfen.\n{% endif %}"
+  mode: single
+- id: '1766942950836'
+  alias: Geschirrspüler - Erinnerung Ausräumen nach 1h
+  description: Wenn nach 1 Stunde noch fertig und Tür zu, Erinnerung senden
+  triggers:
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - finished
+    trigger: state
+  conditions: []
+  actions:
+  - delay: 01:00:00
+  - condition: state
+    entity_id: sensor.geschirrspuler_betriebszustand
+    state: finished
+  - condition: state
+    entity_id: sensor.geschirrspuler_tur
+    state: closed
+  - action: notify.notify
+    metadata: {}
+    data:
+      title: Geschirrspüler
+      message: "Seit 1 Stunde fertig – Zeit zum Ausräumen \U0001F9FC"
+  mode: restart
+- id: '1766942995733'
+  alias: Geschirrspüler - Start Benachrichtigung (Programm/Laufzeit/Ende)
+  description: Sendet beim Start das Programm (DE), Restlaufzeit und geplantes Ende
+  triggers:
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - run
+    trigger: state
+  conditions: []
+  actions:
+  - delay: 00:00:10
+  - variables:
+      prog_raw: '{{ states(''select.geschirrspuler_aktives_programm'') }}'
+      sel_raw: '{{ states(''select.geschirrspuler_ausgewahltes_programm'') }}'
+      prog: "{% set m = {\n  'dishcare_dishwasher_program_quick_65':'Schnell 65°C',\n
+        \ 'dishcare_dishwasher_program_eco_50':'Eco 50°C',\n  'dishcare_dishwasher_program_intensiv_70':'Intensiv
+        70°C',\n  'dishcare_dishwasher_program_auto_2':'Auto',\n  'dishcare_dishwasher_program_night_wash':'Nacht',\n
+        \ 'dishcare_dishwasher_program_machine_care':'Maschinenpflege',\n  'dishcare_dishwasher_program_pre_rinse':'Vorspülen'\n}
+        %} {% set raw = prog_raw if prog_raw not in ['unknown','unavailable',''] else
+        sel_raw %} {{ m.get(raw, raw) if raw not in ['unknown','unavailable',''] else
+        '—' }}"
+      end_ts: '{% set e = states(''sensor.geschirrspuler_programm_endzeit'') %} {{
+        as_timestamp(e) if e not in [''unknown'',''unavailable'',''''] else none }}'
+      laufzeit: "{% if end_ts %}\n  {% set mins = ((end_ts - as_timestamp(now()))
+        / 60) | round(0, 'floor') | int %}\n  {% set mins = [mins, 0] | max %}\n  {%
+        set h = (mins // 60) | int %}\n  {% set m = (mins % 60) | int %}\n  {% if
+        h > 0 %}\n    {{ h }}h {{ '%02d' | format(m) }}m\n  {% else %}\n    {{ m }}m\n
+        \ {% endif %}\n{% else %}\n  —\n{% endif %}"
+      ende: "{% if end_ts %}\n  {{ timestamp_custom(end_ts, '%d.%m %H:%M', true) }}\n{%
+        else %}\n  —\n{% endif %}"
+  - action: notify.notify
+    metadata: {}
+    data:
+      title: Geschirrspüler
+      message: 'Gestartet ▶️ {{ prog }} · Laufzeit: {{ laufzeit }} · Ende: {{ ende
+        }}'
+  mode: single
+- id: '1766943077827'
+  alias: Geschirrspüler - Nach Spülgang prüfen (Klarspüler/Salz)
+  description: Prüft nach finished, ob Klarspüler oder Salz nachgefüllt werden muss
+  triggers:
+  - entity_id:
+    - sensor.geschirrspuler_betriebszustand
+    to:
+    - finished
+    trigger: state
+  conditions: []
+  actions:
+  - delay: 00:00:15
+  - variables:
+      rinse_state: '{{ states(''sensor.geschirrspuler_klarspuler_fast_leer'') }}'
+      salt_state: '{{ states(''sensor.geschirrspuler_salz_fast_leer'') }}'
+      need_rinse: '{{ rinse_state in [''present'',''confirmed''] }}'
+      need_salt: '{{ salt_state in [''present'',''confirmed''] }}'
+  - condition: template
+    value_template: '{{ need_rinse or need_salt }}'
+  - action: notify.notify
+    metadata: {}
+    data:
+      title: Geschirrspüler
+      message: "Folgendes ist fast leer und muss nachgefüllt werden: {%- set items
+        = [] -%} {%- if need_rinse -%}{%- set _ = items.append('Klarspüler') -%}{%-
+        endif -%} {%- if need_salt -%}{%- set _ = items.append('Salz') -%}{%- endif
+        -%} {{ items | join(' & ') }} \U0001F9C2\U0001FAE7"
+  mode: single
+- id: '1766943202243'
+  alias: Kühlschrank - Tür länger als 2 Minuten offen (Kühl + Gefrier)
+  description: Benachrichtigt wenn Kühl- oder Gefrierschranktür 2 Minuten offen bleibt
+  triggers:
+  - entity_id:
+    - sensor.kuhlschrank_kuhlschranktur
+    to:
+    - open
+    - 'on'
+    for: 00:02:00
+    trigger: state
+  - entity_id:
+    - sensor.kuhlschrank_gefrierschranktur
+    to:
+    - open
+    - 'on'
+    for: 00:02:00
+    trigger: state
+  conditions: []
+  actions:
+  - variables:
+      door_name: "{% if trigger.entity_id == 'sensor.kuhlschrank_kuhlschranktur' %}\n
+        \ Kühlschrank\n{% else %}\n  Gefrierschrank\n{% endif %}"
+  - action: notify.notify
+    metadata: {}
+    data:
+      title: Kühlschrank - Tür offen!
+      message: "{{ door_name }}-Tür ist seit über 2 Minuten offen \U0001F6AA❗ Bitte
+        schließen."
+  mode: single
+- id: '1768691110895'
+  alias: Wohnzimmer Rollo - Sonnenuntergang runter, Sonnenaufgang hoch
+  description: Fährt das Wohnzimmer-Rollo abends automatisch runter und morgens wieder
+    hoch.
+  triggers:
+  - event: sunset
+    offset: 00:10:00
+    id: sunset_down
+    trigger: sun
+  - event: sunrise
+    offset: 00:10:00
+    id: sunrise_up
+    trigger: sun
+  conditions: []
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: sunset_down
+      sequence:
+      - target:
+          entity_id:
+          - cover.shutter_02
+        action: cover.close_cover
+        data: {}
+    - conditions:
+      - condition: trigger
+        id: sunrise_up
+      sequence:
+      - target:
+          entity_id:
+          - cover.shutter_02
+          - cover.shutter_01
+        action: cover.open_cover
+        data: {}
+  mode: single
+- id: '1768691569546'
+  alias: Wohnzimmer Licht - Anwesenheit nach Sonnenuntergang
+  description: Schaltet Wohnzimmer-Lichter bei Anwesenheit nach Sonnenuntergang ein
+    (nur wenn aus) und nach 10 Min Abwesenheit aus.
+  triggers:
+  - entity_id: binary_sensor.wohnzimmer_anwesenheit
+    to: 'on'
+    id: presence_on
+    trigger: state
+  - entity_id: binary_sensor.wohnzimmer_anwesenheit
+    to: 'off'
+    for: 00:10:00
+    id: presence_off_10m
+    trigger: state
+  conditions:
+  - condition: sun
+    after: sunset
+    before: sunrise
+  actions:
+  - choose:
+    - conditions:
+      - condition: trigger
+        id: presence_on
+      - condition: state
+        entity_id: group.wohnzimmer_lampen
+        state: 'off'
+      sequence:
+      - target:
+          entity_id:
+          - light.wohnzimmer_stehlampe
+          - light.stehlampe_wohnzimmer_2
+        action: light.turn_on
+        data:
+          brightness_pct: 25
+    - conditions:
+      - condition: trigger
+        id: presence_off_10m
+      sequence:
+      - target:
+          entity_id:
+          - light.wohnzimmer_deckenlampe
+          - light.wohnzimmer_stehlampe
+          - light.wohnzimmer_led_strip
+        action: light.turn_off
+  mode: restart
+- id: '1768692907467'
+  alias: Automation Heizung Bad DG
+  description: ''
+  use_blueprint:
+    path: panhans/advanced_heating_control.yaml
+    input:
+      input_trvs:
+      - climate.thermostat_04
+      input_temperature_sensor: sensor.temp_01_temperature
+      input_temperature_comfort_static: 18
+      input_temperature_eco_static: 14
+      input_physical_change: true
+      input_persons:
+      - person.ole
+      input_people_leaving_home_duration:
+        hours: 0
+        minutes: 15
+        seconds: 0
+      input_schedulers:
+      - schedule.arbeitszimmer_heizung_zeitplan
+      input_windows:
+      - binary_sensor.window_01_contact
+      input_windows_reaction_time_open:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      input_windows_reaction_time_close:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      input_calibration_timeout:
+        hours: 0
+        minutes: 20
+        seconds: 0
+- id: '1768693013077'
+  alias: Automation Heizung Arbeitszimmer
+  description: ''
+  use_blueprint:
+    path: panhans/advanced_heating_control.yaml
+    input:
+      input_trvs:
+      - climate.thermostat_03
+      input_temperature_sensor: sensor.temp_08_temperature
+      input_temperature_comfort_static: 19
+      input_temperature_eco_static: 15
+      input_physical_change: true
+      input_persons:
+      - person.ole
+      input_people_leaving_home_duration:
+        hours: 0
+        minutes: 15
+        seconds: 0
+      input_schedulers:
+      - schedule.arbeitszimmer_heizung_zeitplan
+      input_windows:
+      - binary_sensor.window_07_contact
+      input_windows_reaction_time_open:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      input_windows_reaction_time_close:
+        hours: 0
+        minutes: 2
+        seconds: 30
+      input_calibration_timeout:
+        hours: 0
+        minutes: 5
+        seconds: 0

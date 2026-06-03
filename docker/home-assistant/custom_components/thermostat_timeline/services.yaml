@@ -1,0 +1,202 @@
+set_store:
+  name: Set full store
+  description: Replace the entire schedules store and bump version.
+  fields:
+    instance_id:
+      name: Instance ID
+      description: Optional. When provided, writes into that instance (and activates it by default).
+      required: false
+      example: default
+      selector:
+        text: {}
+    activate:
+      name: Activate instance
+      description: Optional. When instance_id is provided, whether to make it the active instance. Defaults to true.
+      required: false
+      selector:
+        boolean: {}
+    schedules:
+      name: Schedules
+      description: Object mapping entity_id -> {defaultTemp, blocks:[...]}.
+      required: false
+      example: >
+        {"climate.kitchen":{"defaultTemp":20,"blocks":[{"from":"06:00","to":"08:00","temp":21}]}}
+      selector:
+        object: {}
+    settings:
+      name: Settings (optional)
+      description: Extra shared settings used by UI and background auto-apply.
+      required: false
+      example: >
+        {"min_temp":5,"max_temp":25,"away":{"enabled":true,"persons":["person.me"],"target_c":17},"merges":{"climate.living":["climate.living_2"]},"auto_apply_enabled":true}
+      selector:
+        object: {}
+
+select_instance:
+  name: Select active instance
+  description: Switch which instance is used for background control and default API /state.
+  fields:
+    instance_id:
+      name: Instance ID
+      required: true
+      example: winter
+      selector:
+        text: {}
+    create_if_missing:
+      name: Create if missing
+      description: Create the instance if it does not exist.
+      required: false
+      selector:
+        boolean: {}
+    copy_from_active:
+      name: Copy from current active
+      description: When creating, copy schedules/settings from current active instance.
+      required: false
+      selector:
+        boolean: {}
+
+rename_instance:
+  name: Rename instance
+  description: Rename an instance id (moves all data).
+  fields:
+    old_instance_id:
+      name: Old instance ID
+      required: true
+      example: old_name
+      selector:
+        text: {}
+    new_instance_id:
+      name: New instance ID
+      required: true
+      example: new_name
+      selector:
+        text: {}
+
+patch_entity:
+  name: Patch single entity
+  description: Merge given data into one entity and bump version.
+  fields:
+    entity_id:
+      name: Entity
+      description: The climate entity id to patch.
+      required: true
+      example: climate.kitchen
+      selector:
+        entity:
+          domain: climate
+    data:
+      name: Data
+      description: Fields to merge (e.g., defaultTemp, blocks).
+      required: true
+      example: >
+        {"defaultTemp":21,"blocks":[{"from":"17:00","to":"22:00","temp":22}]}
+      selector:
+        object: {}
+
+clear:
+  name: Clear store
+  description: Clear all schedules and bump version.
+
+factory_reset:
+  name: Factory reset
+  description: Delete thermostat_timeline storage files and recreate them empty (removes all instances, schedules, settings, and backups).
+
+backup_now:
+  name: Backup now
+  description: Create a backup of schedules/settings. Supports selecting sections.
+  fields:
+    main:
+      name: Main schedules
+      description: Include base daily schedules (defaultTemp, blocks, profiles).
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    weekday:
+      name: Weekday schedules
+      description: Include weekday schedules (weekly, weekly_modes).
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    presence:
+      name: Presence schedules
+      description: Include presence schedules (advanced away per room).
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    settings:
+      name: Editor settings
+      description: Include editor/global settings (excluding colors).
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    holiday:
+      name: Holiday schedules
+      description: Include holiday schedules per room.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+    colors:
+      name: Color blocks
+      description: Include color ranges and color mode.
+      required: false
+      default: true
+      selector:
+        boolean: {}
+
+restore_now:
+  name: Restore now
+  description: Restore from backup. Can merge only selected sections.
+  fields:
+    mode:
+      name: Mode
+      description: Use 'merge' to merge selected sections, or 'replace' to fully overwrite.
+      required: false
+      example: merge
+      selector:
+        select:
+          options:
+            - merge
+            - replace
+          mode: dropdown
+    main:
+      name: Main schedules
+      description: Restore base daily schedules (defaultTemp, blocks, profiles).
+      required: false
+      selector:
+        boolean: {}
+    weekday:
+      name: Weekday schedules
+      description: Restore weekday schedules (weekly, weekly_modes).
+      required: false
+      selector:
+        boolean: {}
+    presence:
+      name: Presence schedules
+      description: Restore presence schedules.
+      required: false
+      selector:
+        boolean: {}
+    settings:
+      name: Editor settings
+      description: Restore editor/global settings (excluding colors).
+      required: false
+      selector:
+        boolean: {}
+    holiday:
+      name: Holiday schedules
+      description: Restore holiday schedules per room.
+      required: false
+      selector:
+        boolean: {}
+    colors:
+      name: Color blocks
+      description: Restore color ranges and color mode.
+      required: false
+      selector:
+        boolean: {}
+

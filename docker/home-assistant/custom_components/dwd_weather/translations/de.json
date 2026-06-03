@@ -1,0 +1,305 @@
+{
+  "title": "Deutscher Wetterdienst",
+  "entity": {
+    "sensor": {
+      "weather_condition": {
+        "name": "Wetterzustand",
+        "state": {
+          "clear-night": "[%key:component::weather::entity_component::_::state::clear-night%]",
+          "cloudy": "[%key:component::weather::entity_component::_::state::cloudy%]",
+          "fog": "[%key:component::weather::entity_component::_::state::fog%]",
+          "hail": "[%key:component::weather::entity_component::_::state::hail%]",
+          "lightning": "[%key:component::weather::entity_component::_::state::lightning%]",
+          "lightning-rainy": "[%key:component::weather::entity_component::_::state::lightning-rainy%]",
+          "partlycloudy": "[%key:component::weather::entity_component::_::state::partlycloudy%]",
+          "pouring": "[%key:component::weather::entity_component::_::state::pouring%]",
+          "rainy": "[%key:component::weather::entity_component::_::state::rainy%]",
+          "snowy": "[%key:component::weather::entity_component::_::state::snowy%]",
+          "snowy-rainy": "[%key:component::weather::entity_component::_::state::snowy-rainy%]",
+          "sunny": "[%key:component::weather::entity_component::_::state::sunny%]",
+          "windy": "[%key:component::weather::entity_component::_::state::windy%]",
+          "windy-variant": "[%key:component::weather::entity_component::_::state::windy-variant%]"
+        }
+      },
+      "weather_report": {
+        "name": "Wetterbericht"
+      },
+      "apparent_temperature": {
+        "name": "Gefühlte Temperatur"
+      },
+      "dewpoint": {
+        "name": "Taupunkt"
+      },
+      "wind_speed": {
+        "name": "Windgeschwindigkeit"
+      },
+      "wind_direction": {
+        "name": "Windrichtung"
+      },
+      "wind_gusts": {
+        "name": "Windböen"
+      },
+      "precipitation": {
+        "name": "Niederschlag"
+      },
+      "precipitation_probability": {
+        "name": "Niederschlagswahrscheinlichkeit"
+      },
+      "precipitation_duration": {
+        "name": "Niederschlagsdauer"
+      },
+      "cloud_coverage": {
+        "name": "Bewölkungsgrad"
+      },
+      "visibility": {
+        "name": "Sichtweite"
+      },
+      "sun_duration": {
+        "name": "Sonnenscheindauer"
+      },
+      "sun_irradiance": {
+        "name": "Sonneneinstrahlung"
+      },
+      "fog_probability": {
+        "name": "Nebelwahrscheinlichkeit"
+      },
+      "humidity": {
+        "name": "Relative Luftfeuchtigkeit"
+      },
+      "humidity_absolute": {
+        "name": "Absolute Luftfeuchtigkeit"
+      },
+      "measured_values_time": {
+        "name": "Zeit: Messwerte"
+      },
+      "forecast_values_time": {
+        "name": "Zeit: Vorhersagewerte"
+      },
+      "uv_index": {
+        "name": "UV-Index"
+      },
+      "evaporation": {
+        "name": "Verdunstung in den nächsten 24 Stunden"
+      },
+      "airquality_stickstoffdioxid": {
+        "name": "Luftqualität Stickstoffdioxid"
+      },
+      "airquality_ozon": {
+        "name": "Luftqualität Ozon"
+      },
+      "airquality_pm2_5": {
+        "name": "Luftqualität PM2.5"
+      },
+      "airquality_pm10": {
+        "name": "Luftqualität PM10"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "description": "Die Konfiguration kann beliebig oft wiederholt werden und beliebig viele Einträge hinzugefügt werden.",
+        "title": "Deutscher Wetterdienst",
+        "data": {
+          "entity_type": "Welcher Typ soll konfiguriert werden?"
+        }
+      },
+      "station_select": {
+        "description": "Manche Stationen bieten aktuelle Messwerte an (mit einer leichten Verzögerung von ungefähr einer Stunde), die möglicherweise eine höhere Genauigkeit bieten. Sie sind in der Liste durch '[X]' markiert. Die Vorhersagen sind aber auch sehr genau und sind für die meisten Fälle ausreichend.",
+        "title": "Stationsauswahl",
+        "data": {
+          "station_id": "Station",
+          "custom_location": "Wähle eigenen Ort von der Karte aus"
+        },
+        "data_description": {
+          "station_id": "Es kann entweder eine Station aus der Liste ausgewählt werden, oder man kann direkt in der Box nach einer passenden Station suchen und sie dann auswählen.",
+          "custom_location": "Wenn automatisch die nächste Station zu einem gewählten Ort ausgewählt werden soll, muss dieser Schalter aktiviert werden und der Marker auf der Karte unten verschoben werden."
+        }
+      },
+      "station_configure_report": {
+        "description": "Es wurde eine Station ausgewählt, bei der tatsächliche Messwerte vorhanden sind. Die gemessenen Werte bieten eine höhere Genauigkeit, die aber nur mit einer leichten Verzögerung von ungefähr einer Stunde verfügbar sind. Die Aktualität der Wetterdaten kann als Sensorwert angezeigt werden.\n\nDie Vorhersage enthält mehr Datenpunkte als die gemessenen Werte. Es kann ausgewählt werden, welche Daten verwendet werden sollen.",
+        "title": "Datenquellen configuration",
+        "data": {
+          "data_type": "Datenquelle für das aktuelle Wetter"
+        },
+        "data_description": {
+          "data_type": "Diese Einstellung betrifft nur die Sensorwerte für das aktuelle Wetter. Die Vorhersagedaten werden nicht beeinflusst."
+        }
+      },
+      "station_configure": {
+        "title": "Stationskonfiguration",
+        "data": {
+          "station_name": "Stationsname",
+          "wind_direction_type": "Art der Windrichtungsangabe",
+          "interpolate": "Interpolierung der Werte",
+          "hourly_update": "Erzwinge die stündliche Aktualisierung der Daten (siehe Hinweis unten)",
+          "download_apparent_temperature": "Aktiviere gefühlte Temperatur",
+          "download_airquality": "Aktiviere Luftqualitätswerte",
+          "sensor_forecast_steps": "Begrenze verfügbare Vorhersageschritte in Sensorattributen",
+          "additional_forecast_attributes": "Aktiviere zusätzliche Vorhersageattribute",
+          "daily_temp_high_precision": "Erhöhe die Anzeigegenauigkeit der täglichen Temperaturvorhersagen"
+        },
+        "data_description": {
+          "station_name": "Der angezeigte Stationsname",
+          "wind_direction_type": "Betrifft den Sensorwert für die Windrichtung",
+          "interpolate": "Da die Daten nur stündlich verfügbar sind, kann es sein, dass 'Sprünge' in den angezeigten Werten auftreten. Mit dieser Option werden die Daten linear interpoliert.",
+          "hourly_update": "Normalerweise werden die Wetterdaten alle 6 Stunden aktualisiert. Der DWD bietet aber auch eine stündliche Aktualisierung der Daten an bei denen ein paar Informationen fehlen (Niederschlagswahrscheinlichkeit, Niederschlagsdauer, Verdunstung), allerdings erhöht das die Datennutzung erheblich (~37MB vs. ~0.17MB an Download-Daten), da die Sensorwerte für alle verfügbaren Stationen in der stündlichen Aktualisierung enthalten sind.",
+          "download_apparent_temperature": "Lädt zusätzlich zur Standard-Wettervorhersage die Werte der gefühlten Temperatur herunter.",
+          "download_airquality": "Lädt zusätzlich zur Standard-Wettervorhersage Luftqualitätswerte herunter.",
+          "sensor_forecast_steps": "Dies kann nützlich sein, wenn Sie nur eine begrenzte Anzahl von Vorhersageschritten verwenden und die Übersichtlichkeit der Sensorattribute erhöhen möchten.",
+          "additional_forecast_attributes": "Fügt dem Wetterobjekt zusätzliche Vorhersageattribute wie Nebelwahrscheinlichkeit, Verdunstung, Sonnenscheindauer und weitere hinzu.",
+          "daily_temp_high_precision": "Die Vorhersage der täglichen Höchst- und Tiefsttemperatur wird auf eine Kommastelle genau angezeigt."
+        }
+      },
+      "select_map_type": {
+        "title": "Kartenausschnitt",
+        "data": {
+          "map_type": "Welcher Kartenausschnitt soll konfiguriert werden?"
+        }
+      },
+      "select_map_window": {
+        "title": "Deutscher Wetterdienst",
+        "description": "Verschiebe den Marker in die Mitte des gewünschten Ausschnitts und verschiebe den Radius entsprechend. Der Marker muss mindestens einmal verschoben werden, um fortzufahren."
+      },
+      "select_map_content": {
+        "title": "Deutscher Wetterdienst",
+        "data": {
+          "map_foreground_type": "Welche Daten sollen angezeigt werden?",
+          "map_background_type": "Was soll im Hintergrund angezeigt werden?",
+          "map_marker": "Soll die Mitte der Karte markiert werden?",
+          "map_homemarker": "Soll auf der Karte ein Home-Marker dargestellt werden?",
+          "map_dark_mode": "Soll die Karte als Dark Mode angezeigt werden?"
+        }
+      },
+      "select_map_loop": {
+        "title": "Niederschlagsradar Animation",
+        "data": {
+          "map_timestamp": "Soll die Zeit auf dem Bild angezeigt werden?",
+          "map_loop_count": "Wie viele alte Radarbilder sollen angezeigt werden?",
+          "map_loop_speed": "Wie schnell soll die Animation ablaufen?"
+        },
+        "data_description": {
+          "map_loop_count": "Ein neues Radarbild ist alle 5 Minuten verfügbar. Für 30 Minuten gibt es also 6 anzuzeigende Bilder. Der Wert bezieht sich auf das letzte verfügbare Radarbild.",
+          "map_loop_speed": "Der Wert definiert, wie lange ein einzelnes Bild angezeigt wird bevor zum naechsten gewechselt wird."
+        }
+      },
+      "select_map_homemarker": {
+        "title": "Home-Marker Konfiguration",
+        "data": {
+          "map_homemarker_shape": "Welche Form soll der Home-Marker haben?",
+          "map_homemarker_size": "Wie groß soll der Home-Marker sein?",
+          "map_homemarker_color": "Welche Farbe soll der Home-Marker haben?"
+        }
+      }
+    },
+    "error": {
+      "invalid_station_id": "Ungültige Station! Bitte eine von der Liste auswählen.",
+      "already_configured": "Eine Station mit der selben ID und Namen ist bereits konfiguriert, bitte einen anderen Namen wählen.",
+      "unknown": "Unbekannter Fehler"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Anpassen der Entität",
+        "title": "Deutscher Wetterdienst",
+        "data": {
+          "station_name": "Stationsname",
+          "wind_direction_type": "Art der Windrichtungsangabe",
+          "interpolate": "Interpolierung der Werte",
+          "hourly_update": "Erzwinge die stündliche Aktualisierung der Daten (siehe Hinweis unten)",
+          "download_apparent_temperature": "Aktiviere gefühlte Temperatur",
+          "download_airquality": "Aktiviere Luftqualitätswerte",
+          "map_background_type": "Was soll im Hintergrund angezeigt werden?",
+          "map_marker": "Soll die Mitte der Karte markiert werden?",
+          "map_homemarker": "Soll die eingestellte Position von HA auf der Karte markiert werden?",
+          "map_timestamp": "Soll die Zeit auf dem Bild angezeigt werden?",
+          "map_loop_count": "Wie viele alte Radarbilder sollen angezeigt werden?",
+          "map_loop_speed": "Wie schnell soll die Animation ablaufen?",
+          "sensor_forecast_steps": "Begrenze verfügbare Vorhersageschritte in Sensorattributen",
+          "additional_forecast_attributes": "Aktiviere zusätzliche Vorhersageattribute",
+          "map_dark_mode": "Soll die Karte als Dark Mode angezeigt werden?",
+          "daily_temp_high_precision": "Erhöhe die Anzeigegenauigkeit der täglichen Temperaturvorhersagen"
+        },
+        "data_description": {
+          "station_name": "Der angezeigte Stationsname",
+          "wind_direction_type": "Betrifft den Sensorwert für die Windrichtung",
+          "interpolate": "Da die Daten nur stündlich verfügbar sind, kann es sein, dass 'Sprünge' in den angezeigten Werten auftreten. Mit dieser Option werden die Daten linear interpoliert.",
+          "hourly_update": "Normalerweise werden die Wetterdaten alle 6 Stunden aktualisiert. Der DWD bietet aber auch eine stündliche Aktualisierung der Daten an, allerdings erhöht das die Datennutzung erheblich (~37MB vs. ~0.17MB an Download-Daten), da die Sensorwerte für alle verfügbaren Stationen in der stündlichen Aktualisierung enthalten sind.",
+          "download_apparent_temperature": "Lädt zusätzlich zur Standard-Wettervorhersage die Werte der gefühlten Temperatur herunter.",
+          "download_airquality": "Lädt zusätzlich zur Standard-Wettervorhersage Luftqualitätswerte herunter.",
+          "map_options_message": "At the moment it is not possible to configure a chart. Please remove this element and re-add it with your desired settings.",
+          "map_loop_count": "Ein neues Radarbild ist alle 5 Minuten verfügbar. Für 30 Minuten gibt es also 6 anzuzeigende Bilder. Der Wert bezieht sich auf das letzte verfügbare Radarbild.",
+          "map_loop_speed": "Der Wert definiert, wie lange ein einzelnes Bild angezeigt wird bevor zum naechsten gewechselt wird.",
+          "sensor_forecast_steps": "Dies kann nützlich sein, wenn Sie nur eine begrenzte Anzahl von Vorhersageschritten verwenden und die Übersichtlichkeit der Sensorattribute erhöhen möchten.",
+          "additional_forecast_attributes": "Fügt dem Wetterobjekt zusätzliche Vorhersageattribute wie Nebelwahrscheinlichkeit, Verdunstung, Sonnenscheindauer und weitere hinzu.",
+          "daily_temp_high_precision": "Die Vorhersage der täglichen Höchst- und Tiefsttemperatur wird auf eine Kommastelle genau angezeigt."
+        }
+      },
+      "homemarker": {
+        "description": "",
+        "title": "Home-Marker konfigurieren",
+        "data": {
+          "map_homemarker_shape": "Welche Form soll der Home-Marker haben?",
+          "map_homemarker_size": "Wie groß soll der Home-Marker sein?",
+          "map_homemarker_color": "Welche Farbe soll der Home-Marker haben?"
+        }
+      }
+    }
+  },
+  "selector": {
+    "entity_type": {
+      "options": {
+        "weather_station": "Wetterstation",
+        "weather_map": "Wetterkarte"
+      }
+    },
+    "data_type": {
+      "options": {
+        "mixed_data": "Nutze Messwerte wenn vorhanden und andernfalls Vorhersagedaten (empfohlen)",
+        "report_data": "Nutze nur Messwerte für das aktuelle Wetter (weniger Sensorarten verfügbar)",
+        "forecast_data": "Nutze nur Vorhersagedaten für das aktuelle Wetter"
+      }
+    },
+    "wind_direction_type": {
+      "options": {
+        "degrees": "Grad",
+        "direction": "Richtung (N, NE, E, ...)"
+      }
+    },
+    "map_type": {
+      "options": {
+        "map_germany": "Deutschland",
+        "map_custom": "Eigener Kartenausschnitt"
+      }
+    },
+    "map_foreground_type": {
+      "options": {
+        "map_foreground_precipitation": "Niederschlagsradar",
+        "map_foreground_maxtemp": "Maximale gefühlte Temperatur",
+        "map_foreground_uvindex": "UV-Index",
+        "map_foreground_pollenflug": "Pollenvorhersage",
+        "map_foreground_satellite_rgb": "Satellitenbild RGB",
+        "map_foreground_satellite_ir": "Satellitenbild IR",
+        "map_foreground_warnungen_gem": "Wetterwarnungen auf Gemeindeebene",
+        "map_foreground_warnungen_kreise": "Wetterwarnungen auf Kreisebene"
+      }
+    },
+    "map_background_type": {
+      "options": {
+        "map_background_laender": "Länder",
+        "map_background_bundeslaender": "Bundesländer",
+        "map_background_kreise": "Kreise",
+        "map_background_gemeinden": "Gemeinden",
+        "map_background_satellit": "Satellitenbild"
+      }
+    },
+    "map_homemarker_shape": {
+      "options": {
+        "map_homemarker_shape_circle": "Kreis",
+        "map_homemarker_shape_square": "Quadrat",
+        "map_homemarker_shape_cross": "Kreuz"
+      }
+    }
+  }
+}

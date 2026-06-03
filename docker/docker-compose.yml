@@ -7,9 +7,12 @@ networks:
     driver: bridge
     driver_opts:
       com.docker.network.bridge.name: br-pihole
+  iot:
+    driver: bridge
 
 volumes:
   portainer_data:
+  mosquitto_data: 
 
 services:
   # -- Sicherer Socket-Proxy (Least Privilege) --
@@ -100,7 +103,7 @@ services:
       traefik.http.routers.pihole.tls: "true"
       traefik.http.services.pihole.loadbalancer.server.port: "80"
       # Optional: feste Prefix-Weiterleitung auf /admin
-      traefik.http.middlewares.pihole-admin.redirectregex.regex: "^https?://([^/]+)/?$"
+      traefik.http.middlewares.pihole-admin.redirectregex.regex: "^https?://([^/]+)/?$$"
       traefik.http.middlewares.pihole-admin.redirectregex.replacement: "https://$${1}/admin"
       traefik.http.middlewares.pihole-admin.redirectregex.permanent: "true"
       traefik.http.routers.pihole.middlewares: pihole-admin
@@ -144,28 +147,28 @@ services:
       - UPDATE_CRON=${UPDATE_CRON}
 
   # -- Code-Server (HTTPS intern -> sag Traefik "scheme=https") --
-  code-server:
-    image: lscr.io/linuxserver/code-server:latest
-    container_name: code-server
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=${TZ}
-      - PASSWORD=${PASSWORD}
-      - SUDO_PASSWORD=${SUDO_PASSWORD}
-      - DEFAULT_WORKSPACE=${DEFAULT_WORKSPACE}
-    volumes:
-      - ./code-server:/config
-    restart: unless-stopped
-    networks: [proxy]
-    labels:
-      traefik.enable: "true"
-      traefik.docker.network: "proxy" 
-      traefik.http.routers.code.rule: Host(`code.bause.lan`)
-      traefik.http.routers.code.entrypoints: websecure
-      traefik.http.routers.code.tls: "true"
-      traefik.http.services.code.loadbalancer.server.port: "8443"
-      traefik.http.services.code.loadbalancer.server.scheme: "https"
+  # code-server:
+  #   image: lscr.io/linuxserver/code-server:latest
+  #   container_name: code-server
+  #   environment:
+  #     - PUID=1000
+  #     - PGID=1000
+  #     - TZ=${TZ}
+  #     - PASSWORD=${PASSWORD}
+  #     - SUDO_PASSWORD=${SUDO_PASSWORD}
+  #     - DEFAULT_WORKSPACE=${DEFAULT_WORKSPACE}
+  #   volumes:
+  #     - ./code-server:/config
+  #   restart: unless-stopped
+  #   networks: [proxy]
+  #   labels:
+  #     traefik.enable: "true"
+  #     traefik.docker.network: "proxy" 
+  #     traefik.http.routers.code.rule: Host(`code.bause.lan`)
+  #     traefik.http.routers.code.entrypoints: websecure
+  #     traefik.http.routers.code.tls: "true"
+  #     traefik.http.services.code.loadbalancer.server.port: "8443"
+  #     traefik.http.services.code.loadbalancer.server.scheme: "https"
 
   # -- Home Assistant (network_mode: host für mDNS und Zigbee) --
   homeassistant:
@@ -173,10 +176,87 @@ services:
     container_name: homeassistant
     restart: unless-stopped
     network_mode: host
+    privileged: true
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
     environment:
       - TZ=${TZ}
     volumes:
       - ./home-assistant:/config
       - /etc/localtime:/etc/localtime:ro
+      - /run/dbus:/run/dbus:ro
     # devices:
     #   - /dev/serial/by-id/usb-<DEIN_DONGLE>:/dev/ttyUSB0
+
+   # --- MQTT Broker ---
+  mosquitto:
+    image: eclipse-mosquitto:2
+    container_name: mosquitto
+    restart: unless-stopped
+    networks: [iot]
+    volumes:
+      - mosquitto_data:/mosquitto/data
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/log:/mosquitto/log
+    # HA läuft im host network → Port 1883 am Host veröffentlichen
+    ports:
+      - "1883:1883"
+
+  # --- Zigbee2MQTT ---
+  zigbee2mqtt:
+    image: koenkk/zigbee2mqtt:latest
+    container_name: zigbee2mqtt
+    restart: unless-stopped
+    depends_on: [mosquitto]
+    networks: [iot, proxy]
+    volumes:
+      - ./zigbee2mqtt/data:/app/data
+      - /run/udev:/run/udev:ro
+    # Wenn du USB-Dongle nutzt, devices freigeben (by-id verwenden!):
+    # devices:
+    #   - /dev/serial/by-id/usb-<DEIN_DONGLE>:/dev/ttyUSB0
+    environment:
+      - TZ=${TZ}
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: "proxy"
+      traefik.http.routers.z2m.rule: Host(`zigbee.bause.lan`)
+      traefik.http.routers.z2m.entrypoints: websecure
+      traefik.http.routers.z2m.tls: "true"
+      traefik.http.services.z2m.loadbalancer.server.port: "8080" # Z2M-Frontend (intern)
+  
+  govee2mqtt:
+    image: ghcr.io/wez/govee2mqtt:latest
+    container_name: govee2mqtt
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      # Govee Account / API
+      GOVEE_API_KEY: "${GOVEE_API_KEY}"
+      GOVEE_EMAIL: "${GOVEE_EMAIL}"        # optional, nur nötig für IoT/Tap-to-Run
+      GOVEE_PASSWORD: "${GOVEE_PASSWORD}"     # optional
+
+      # MQTT (geht über den Host-Port auf deinen mosquitto-Container)
+      GOVEE_MQTT_HOST: "127.0.0.1"
+      GOVEE_MQTT_PORT: "1883"
+      GOVEE_MQTT_USER: "${MQTT_USER}"
+      GOVEE_MQTT_PASSWORD: "${MQTT_PASSWORD}"
+
+      # Sonstiges
+      GOVEE_TEMPERATURE_SCALE: "C"
+      TZ: "${TZ}"
+  
+    # -- Matter Server für Home Assistant (Python-Matter-Server) --
+  matter-server:
+    image: ghcr.io/home-assistant-libs/python-matter-server:stable
+    container_name: matter-server
+    restart: unless-stopped
+    network_mode: host
+    security_opt:
+      - apparmor=unconfined
+    volumes:
+      - ./matter-server:/data
+      - /run/dbus:/run/dbus:ro
+    environment:
+      - TZ=${TZ}

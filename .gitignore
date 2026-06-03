@@ -1,3 +1,29 @@
+# optional: only if you do not want to version these assets
+docker/home-assistant/image/
+docker/home-assistant/www/
+
+# home assistant runtime database
+docker/home-assistant/home-assistant_v2.db
+docker/home-assistant/home-assistant_v2.db-*
+docker/home-assistant/*.db
+docker/home-assistant/*.db-shm
+docker/home-assistant/*.db-wal
+
+# home assistant logs
+docker/home-assistant/*.log
+docker/home-assistant/*.log.*
+docker/home-assistant/home-assistant.log*
+docker/home-assistant/*.fault
+
+# home assistant runtime/cache/state
+docker/home-assistant/.cache/
+docker/home-assistant/.cloud/
+docker/home-assistant/.storage/
+docker/home-assistant/deps/
+docker/home-assistant/tts/
+docker/home-assistant/backups/
+docker/home-assistant/.ha_run.lock
+
 # General
 *.log
 *.tmp

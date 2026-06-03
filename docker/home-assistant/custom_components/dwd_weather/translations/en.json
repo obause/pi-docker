@@ -1,0 +1,306 @@
+{
+  "title": "Deutscher Wetterdienst",
+  "entity": {
+    "sensor": {
+      "weather_condition": {
+        "name": "Weather condition",
+        "state": {
+          "clear-night": "[%key:component::weather::entity_component::_::state::clear-night%]",
+          "cloudy": "[%key:component::weather::entity_component::_::state::cloudy%]",
+          "fog": "[%key:component::weather::entity_component::_::state::fog%]",
+          "hail": "[%key:component::weather::entity_component::_::state::hail%]",
+          "lightning": "[%key:component::weather::entity_component::_::state::lightning%]",
+          "lightning-rainy": "[%key:component::weather::entity_component::_::state::lightning-rainy%]",
+          "partlycloudy": "[%key:component::weather::entity_component::_::state::partlycloudy%]",
+          "pouring": "[%key:component::weather::entity_component::_::state::pouring%]",
+          "rainy": "[%key:component::weather::entity_component::_::state::rainy%]",
+          "snowy": "[%key:component::weather::entity_component::_::state::snowy%]",
+          "snowy-rainy": "[%key:component::weather::entity_component::_::state::snowy-rainy%]",
+          "sunny": "[%key:component::weather::entity_component::_::state::sunny%]",
+          "windy": "[%key:component::weather::entity_component::_::state::windy%]",
+          "windy-variant": "[%key:component::weather::entity_component::_::state::windy-variant%]"
+        }
+      },
+      "weather_report": {
+        "name": "Weather report"
+      },
+      "apparent_temperature": {
+        "name": "Apparent temperature"
+      },
+      "dewpoint": {
+        "name": "Dewpoint"
+      },
+      "wind_speed": {
+        "name": "Wind speed"
+      },
+      "wind_direction": {
+        "name": "Wind direction"
+      },
+      "wind_gusts": {
+        "name": "Wind gusts"
+      },
+      "precipitation": {
+        "name": "Precipitation"
+      },
+      "precipitation_probability": {
+        "name": "Precipitation probability"
+      },
+      "precipitation_duration": {
+        "name": "Precipitation duration"
+      },
+      "cloud_coverage": {
+        "name": "Cloud coverage"
+      },
+      "visibility": {
+        "name": "Visibility"
+      },
+      "sun_duration": {
+        "name": "Sun duration"
+      },
+      "sun_irradiance": {
+        "name": "Sun irradiance"
+      },
+      "fog_probability": {
+        "name": "Fog probability"
+      },
+      "humidity": {
+        "name": "Relative Humidity"
+      },
+      "humidity_absolute": {
+        "name": "Absolute Humidity"
+      },
+      "measured_values_time": {
+        "name": "Time: measured values"
+      },
+      "forecast_values_time": {
+        "name": "Time: forecast values"
+      },
+      "uv_index": {
+        "name": "UV-Index"
+      },
+      "evaporation": {
+        "name": "Evaporation in the next 24 hours"
+      },
+      "airquality_stickstoffdioxid": {
+        "name": "Air Quality Nitrogen Dioxide"
+      },
+      "airquality_ozon": {
+        "name": "Air Quality Ozone"
+      },
+      "airquality_pm2_5": {
+        "name": "Air Quality PM2.5"
+      },
+      "airquality_pm10": {
+        "name": "Air Quality PM10"
+      }
+    }
+  },
+  "config": {
+    "step": {
+      "user": {
+        "description": "You can repeat the configuration and add as many entities as you like.",
+        "title": "Deutscher Wetterdienst",
+        "data": {
+          "entity_type": "Which Entity Type would you like to configure?"
+        }
+      },
+      "station_select": {
+        "description": "Some stations offer actual measured values (with a slight delay of about one hour), which could provide more accurate data. The are marked with '[X]' in the list. However, the forecasts are still very accurate and are sufficent for most cases.",
+        "title": "Station selection",
+        "data": {
+          "station_id": "Station",
+          "custom_location": "Use custom location from the chart"
+        },
+        "data_description": {
+          "station_id": "You can either select a station from the list which is ordered by distance from your home, or you can search directly within the box and select a matching one.",
+          "custom_location": "If you want to select the nearest station to a specific location, toggle this button and drag the marker on the chart below."
+        }
+      },
+      "station_configure_report": {
+        "description": "You have selected a station where actual measurements are available. The measured values provide values with higher accuracy, but they are only available with a slight delay of about one hour. You can check the currentness of the weather data as a sensor value.\n\nThe forecast contains more data points than the measured values. You can can choose which data to use.",
+        "title": "Data source configuration",
+        "data": {
+          "data_type": "Data source for current weather"
+        },
+        "data_description": {
+          "data_type": "This only affects the sensor value for the current weather. The forecast is unaffected."
+        }
+      },
+      "station_configure": {
+        "title": "Station configuration",
+        "data": {
+          "station_name": "Station name",
+          "wind_direction_type": "Wind direction value type",
+          "interpolate": "Interpolate values",
+          "hourly_update": "Force hourly data update (see warning below)",
+          "download_apparent_temperature": "Enable apparent temperature values",
+          "download_airquality": "Enable air quality values",
+          "sensor_forecast_steps": "Limit available forecast steps in sensor attributes",
+          "additional_forecast_attributes": "Activate additional forecast attributes",
+          "daily_temp_high_precision": "Use higher display precision for daily temperatures"
+        },
+        "data_description": {
+          "station_name": "This is the displayed name of the station.",
+          "wind_direction_type": "This affects the sensor value for the wind direction.",
+          "interpolate": "As the values are only provided on an hourly basis, there might be jumps in the displayed values. With this option, the data will be smoothed.",
+          "hourly_update": "Normally the weather is updated every 6 hours. DWD provides an hourly data update as well with some information missing (precipitation probability, precipitiation duration, evaporation), this will however increase data usage significantly as the sensor values are bundled in the hourly update (~37MB vs. ~0.17MB of download per update). Keep in mind, that this obviously also slows down the update of new values.",
+          "download_apparent_temperature": "Downloads apparent temperature values in addition to the standard weather data.",
+          "download_airquality": "Downloads air quality values in addition to the standard weather data.",
+          "sensor_forecast_steps": "This can be useful if you only use a limited amount of forecast steps and want to increase the clarity of the sensor attributes.",
+          "additional_forecast_attributes": "This will add additional forecast attributes like fog probability, evaporation and sun duration, etc. to the weather object.",
+          "daily_temp_high_precision": "This will increase the display precision of the daily maximum and minimum temperature values to a decimal place."
+        }
+      },
+      "select_map_type": {
+        "title": "Chart location",
+        "data": {
+          "map_type": "Which chart window do you like to use?"
+        }
+      },
+      "select_map_window": {
+        "title": "Chart window",
+        "description": "Drag the marker to the center of your desired chart window and adjust the radius accordingly. You have to move the marker at least once to proceed."
+      },
+      "select_map_content": {
+        "title": "Chart configuration",
+        "data": {
+          "map_foreground_type": "Which data would you like to see?",
+          "map_background_type": "What should be displayed in the background?",
+          "map_marker": "Should the middle of the map be marked?",
+          "map_homemarker": "Should the map contain a home marker?",
+          "map_dark_mode": "Should the map be displayed in dark mode?"
+        }
+      },
+      "select_map_loop": {
+        "title": "Precipitation loop",
+        "data": {
+          "map_timestamp": "Should the time of the image be visible on the image?",
+          "map_loop_count": "How many radar images from the past you would like to see?",
+          "map_loop_speed": "How quick should the animation play?"
+        },
+        "data_description": {
+          "map_loop_count": "A radar image is provided every 5 minutes. So for 30 minutes there will be 6 images shown in the loop. This value refers to the last available image",
+          "map_loop_speed": "The value defines, how long every single image is shown before switching to the next one."
+        }
+      },
+      "select_map_homemarker": {
+        "title": "Home marker configuration",
+        "data": {
+          "map_homemarker_shape": "Which shape should the home marker have?",
+          "map_homemarker_size": "How big should the home marker be?",
+          "map_homemarker_color": "What color should the home marker have?"
+        }
+      }
+    },
+    "error": {
+      "invalid_station_id": "Invalid Station! Please select one from the list.",
+      "already_configured": "A station with the same id and name is already configured, please choose another name.",
+      "unknown": "Unknown Error"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "description": "Reconfigure the entity",
+        "title": "Deutscher Wetterdienst",
+        "data": {
+          "station_name": "Station name",
+          "wind_direction_type": "Wind direction value type",
+          "interpolate": "Interpolate values",
+          "hourly_update": "Force hourly data update (see warning below)",
+          "download_apparent_temperature": "Enable apparent temperature values",
+          "download_airquality": "Enable air quality values",
+          "sensor_forecast_steps": "Limit available forecast steps in sensor attributes",
+          "map_options_message": "Unavailable setting",
+          "map_background_type": "What should be displayed in the background?",
+          "map_marker": "Should the middle of the map be marked?",
+          "map_homemarker": "Should a home-marker be displayed on the map?",
+          "map_timestamp": "Should the time of the image be visible on the image?",
+          "map_loop_count": "How many radar images from the past you would like to see?",
+          "map_loop_speed": "How quick should the animation play?",
+          "additional_forecast_attributes": "Activate additional forecast attributes",
+          "map_dark_mode": "Should the map be displayed in dark mode?",
+          "daily_temp_high_precision": "Use higher display precision for daily temperatures"
+        },
+        "data_description": {
+          "station_name": "This is the displayed name of the station.",
+          "wind_direction_type": "This affects the sensor value for the wind direction.",
+          "interpolate": "As the values are only provided on an hourly basis, there might be jumps in the displayed values. With this option, the data will be smoothed.",
+          "hourly_update": "Normally the weather is updated every 6 hours. DWD provides an hourly data update as well, this will however increase data usage significantly as the sensor values are bundled in the hourly update (~37MB vs. ~0.17MB of download per update). Keep in mind, that this obviously also slows down the update of new values.",
+          "download_apparent_temperature": "Downloads apparent temperature values in addition to the standard weather data.",
+          "download_airquality": "Downloads air quality values in addition to the standard weather data.",
+          "map_options_message": "At the moment it is not possible to configure a chart. Please remove this element and re-add it with your desired settings.",
+          "map_loop_count": "A radar image is provided every 5 minutes. So for 30 minutes there will be 6 images shown in the loop. This value refers to the last available image",
+          "map_loop_speed": "The value defines, how long every single image is shown before switching to the next one.",
+          "sensor_forecast_steps": "This can be useful if you only use a limited amount of forecast steps and want to increase the clarity of the sensor attributes.",
+          "additional_forecast_attributes": "This will add additional forecast attributes like fog probability, evaporation and sun duration, etc. to the weather object.",
+          "daily_temp_high_precision": "This will increase the display precision of the daily maximum and minimum temperature values to a decimal place."
+        }
+      },
+      "homemarker": {
+        "description": "",
+        "title": "Configure home marker",
+        "data": {
+          "map_homemarker_shape": "Which shape should the home marker have?",
+          "map_homemarker_size": "How big should the home marker be?",
+          "map_homemarker_color": "What color should the home marker have?"
+        }
+      }
+    }
+  },
+  "selector": {
+    "entity_type": {
+      "options": {
+        "weather_station": "Weather station",
+        "weather_map": "Weather charts"
+      }
+    },
+    "data_type": {
+      "options": {
+        "mixed_data": "Use report data if available and forecasted data if not (recommended)",
+        "report_data": "Use only report data for current weather (fewer sensor types available)",
+        "forecast_data": "Use only forecast data for current weather"
+      }
+    },
+    "wind_direction_type": {
+      "options": {
+        "degrees": "Degrees",
+        "direction": "Direction (N, NE, E, ...)"
+      }
+    },
+    "map_type": {
+      "options": {
+        "map_germany": "Germany",
+        "map_custom": "Custom chart window"
+      }
+    },
+    "map_foreground_type": {
+      "options": {
+        "map_foreground_precipitation": "Precipitation radar",
+        "map_foreground_maxtemp": "Maximum feels like temperature",
+        "map_foreground_uvindex": "UV-Index",
+        "map_foreground_pollenflug": "Pollen dispersal",
+        "map_foreground_satellite_rgb": "Satellite Image RGB",
+        "map_foreground_satellite_ir": "Satellite Image IR",
+        "map_foreground_warnungen_gem": "Weather warnings per municipality",
+        "map_foreground_warnungen_kreise": "Weather warnings per district"
+      }
+    },
+    "map_background_type": {
+      "options": {
+        "map_background_laender": "Countries",
+        "map_background_bundeslaender": "German Federal states",
+        "map_background_kreise": "German Districts",
+        "map_background_gemeinden": "German Municipalities",
+        "map_background_satellit": "Satellite image"
+      }
+    },
+    "map_homemarker_shape": {
+      "options": {
+        "map_homemarker_shape_circle": "Circle",
+        "map_homemarker_shape_square": "Square",
+        "map_homemarker_shape_cross": "Cross"
+      }
+    }
+  }
+}
