@@ -40,7 +40,7 @@
         "linkquality": 141
     },
     "0xa4c138c090985bad": {
-        "illuminance": 11,
+        "illuminance": 9,
         "battery": 83,
         "voltage": 2900,
         "last_seen": "2026-04-11T16:12:30.836Z",
@@ -106,11 +106,11 @@
         "child_lock": "UNLOCK",
         "indicator_mode": "on",
         "power_outage_memory": "on",
-        "power": 395,
+        "power": 422,
         "countdown": 0,
         "voltage": 242,
         "energy": 132.19,
-        "current": 1.67,
+        "current": 1.77,
         "last_seen": "2026-04-11T16:23:40.257Z",
         "linkquality": 15
     },
@@ -123,7 +123,7 @@
         "countdown": 0,
         "voltage": 230,
         "energy": 147.7,
-        "current": 0.05,
+        "current": 0,
         "last_seen": "2026-04-11T16:24:43.438Z",
         "linkquality": 21
     },
@@ -205,7 +205,7 @@
     "0xa4c13846b72514b2": {
         "state": "presence",
         "presence": true,
-        "illuminance": 272,
+        "illuminance": 199,
         "move_sensitivity": 6,
         "presence_sensitivity": 8,
         "detection_distance_min": 0,
@@ -371,7 +371,7 @@
         "linkquality": 31
     },
     "0xa4c13853cad3cc10": {
-        "temperature": 26.05,
+        "temperature": 26.08,
         "humidity": 43.5,
         "last_seen": "2026-04-11T16:23:52.794Z",
         "linkquality": 87,
@@ -386,8 +386,8 @@
     },
     "0xa4c138a9323466c6": {
         "last_seen": "2026-04-11T16:23:44.761Z",
-        "temperature": 25.69,
-        "humidity": 39.2,
+        "temperature": 25.6,
+        "humidity": 39.3,
         "linkquality": 147,
         "battery": 73
     },
@@ -427,7 +427,7 @@
     },
     "0xa4c1386a68a9e376": {
         "temperature_unit": "celsius",
-        "temperature": 18.9,
+        "temperature": 18.4,
         "humidity": 57,
         "battery_state": "high",
         "last_seen": "2026-04-11T15:58:45.546Z",
@@ -510,7 +510,7 @@
     },
     "0xa4c1381517032358": {
         "energy": 182.85,
-        "voltage": 233,
+        "voltage": 232,
         "state": "ON",
         "countdown": 0,
         "power_outage_memory": "restore",
@@ -580,7 +580,7 @@
     "0xa4c138508a91709a": {
         "voltage": 2700,
         "battery": 98,
-        "contact": false,
+        "contact": true,
         "tamper": false,
         "battery_low": false,
         "last_seen": "2026-04-11T14:55:32.231Z",
@@ -671,7 +671,7 @@
         "power": 0,
         "countdown": 0,
         "energy": 26.62,
-        "current": 0.07,
+        "current": 0.03,
         "last_seen": "2026-04-11T16:24:43.164Z",
         "linkquality": 184
     },
