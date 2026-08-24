@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+"""Serve a fixed set of read-only host summaries on a local Unix socket."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+import socket
+import subprocess
+
+
+SOCKET_PATH = Path("/run/pi-ops-status/status.sock")
+COMMANDS = {"status", "zigbee", "containers", "backup", "host", "alerts"}
+MAX_REQUEST = 64
+MAX_RESPONSE = 3900
+
+
+def execute(command: str) -> bytes:
+    if command not in COMMANDS:
+        return b"ERROR\nunsupported request\n"
+    try:
+        result = subprocess.run(
+            ["/usr/local/sbin/pi-ops-status", command],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=25,
+            env={"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return b"ERROR\nstatus unavailable\n"
+    output = result.stdout.strip()
+    if result.returncode != 0 or not output:
+        return b"ERROR\nstatus unavailable\n"
+    return f"OK\n{output[:MAX_RESPONSE]}\n".encode("utf-8")
+
+
+def receive_request(connection: socket.socket) -> str | None:
+    data = bytearray()
+    while len(data) <= MAX_REQUEST:
+        chunk = connection.recv(MAX_REQUEST + 1 - len(data))
+        if not chunk:
+            break
+        data.extend(chunk)
+        if b"\n" in data:
+            break
+    if len(data) > MAX_REQUEST:
+        return None
+    try:
+        request = bytes(data).decode("ascii")
+    except UnicodeDecodeError:
+        return None
+    if not request.endswith("\n") or request.count("\n") != 1:
+        return None
+    return request[:-1]
+
+
+def main() -> int:
+    try:
+        SOCKET_PATH.unlink(missing_ok=True)
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as listener:
+            listener.bind(str(SOCKET_PATH))
+            os.chmod(SOCKET_PATH, 0o660)
+            listener.listen(8)
+            print("Lokaler Statusdienst gestartet", flush=True)
+            while True:
+                connection, _ = listener.accept()
+                with connection:
+                    connection.settimeout(30)
+                    try:
+                        command = receive_request(connection)
+                        response = execute(command) if command is not None else b"ERROR\ninvalid request\n"
+                        connection.sendall(response)
+                    except (OSError, TimeoutError):
+                        pass
+    finally:
+        SOCKET_PATH.unlink(missing_ok=True)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

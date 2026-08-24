@@ -33,12 +33,13 @@ gespeicherten privaten Chat und vom zugehörigen Benutzer. Alle anderen Updates
 werden ohne Antwort verworfen. Die Prüfung findet serverseitig statt und ist
 von Telegrams sichtbarem Befehlsmenü unabhängig.
 
-Für Statusdaten besitzt der Dienst keinen Docker-Socket-Zugriff. Die
-Sudoers-Regel erlaubt ausschließlich sechs vollständige Aufrufe von
-`/usr/local/sbin/pi-ops-status` mit einem jeweils festen Argument. Das
-Hilfsprogramm bietet keine Shell-, Restart-, Schreib-, Update- oder
-Backup-Aktion und gibt weder Logs der Anwendungen noch Secrets, Gerätenamen,
-Adressen, Mounts oder Umgebungsvariablen aus.
+Für Statusdaten besitzt der Bot weder Docker-Socket-Zugriff noch Sudo-Rechte.
+Ein separater lokaler Dienst läuft als root ohne Netzwerkzugriff und nimmt über
+den gruppengeschützten Unix-Socket `/run/pi-ops-status/status.sock`
+ausschließlich sechs fest codierte Leseabfragen an. Ungültige oder zusätzliche
+Argumente werden verworfen. Das Hilfsprogramm bietet keine Shell-, Restart-,
+Schreib-, Update- oder Backup-Aktion und gibt weder Logs der Anwendungen noch
+Secrets, Gerätenamen, Adressen, Mounts oder Umgebungsvariablen aus.
 
 Der Long-Polling-Offset liegt unter `/var/lib/pi-ops-bot/offset`, damit bereits
 verarbeitete Nachrichten nach einem Neustart nicht erneut ausgeführt werden.
@@ -47,6 +48,7 @@ verarbeitete Nachrichten nach einem Neustart nicht erneut ausgeführt werden.
 
 ```sh
 systemctl status pi-ops-bot.service
+systemctl status pi-ops-status-server.service
 journalctl -u pi-ops-bot.service -n 30 --no-pager
 sudo systemctl restart pi-ops-bot.service
 ```

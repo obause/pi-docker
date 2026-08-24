@@ -7,7 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
-import subprocess
+import socket
 import sys
 import tempfile
 import time
@@ -19,6 +19,7 @@ import urllib.request
 TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
 COMMAND_PATTERN = re.compile(r"^/([a-z]+)(?:@[A-Za-z0-9_]+)?(?:\s|$)")
 STATUS_COMMANDS = {"status", "zigbee", "containers", "backup", "host", "alerts"}
+STATUS_SOCKET = "/run/pi-ops-status/status.sock"
 COMMAND_DESCRIPTIONS = [
     ("status", "Gesamtstatus anzeigen"),
     ("zigbee", "Zigbee-Funkpfad prüfen"),
@@ -113,19 +114,26 @@ def run_status(command: str) -> str:
     if command not in STATUS_COMMANDS:
         return help_text()
     try:
-        result = subprocess.run(
-            ["/usr/bin/sudo", "-n", "/usr/local/sbin/pi-ops-status", command],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=25,
-            env={"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
-        )
-    except (OSError, subprocess.TimeoutExpired):
+        chunks: list[bytes] = []
+        received = 0
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
+            connection.settimeout(25)
+            connection.connect(STATUS_SOCKET)
+            connection.sendall(f"{command}\n".encode("ascii"))
+            connection.shutdown(socket.SHUT_WR)
+            while received < 4096:
+                chunk = connection.recv(min(1024, 4096 - received))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                received += len(chunk)
+        output = b"".join(chunks).decode("utf-8").strip()
+    except (OSError, TimeoutError, UnicodeDecodeError):
         return "🔴 Statusabfrage ist momentan nicht verfügbar."
-    output = result.stdout.strip()
-    if result.returncode != 0 or not output:
+    if not output or output.startswith("ERROR\n"):
         return "🔴 Statusabfrage ist momentan nicht verfügbar."
+    if output.startswith("OK\n"):
+        output = output[3:]
     return output[:3900]
 
 
