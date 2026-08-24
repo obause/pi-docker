@@ -46,3 +46,9 @@ Vor Änderungen an persistenten Daten zuerst das Offsite-Backup prüfen oder man
 ```
 
 Der Symlink `/home/obause/pi-docker/runtime` zeigt auf `/srv/pi-docker`. Die produktive Compose-Umgebung bleibt über `docker/.env` erreichbar; dieser Pfad ist ein nicht versionierter Symlink auf die geschützte Hostdatei.
+
+## GitHub-Zugriff vom Pi
+
+Das Repository verwendet einen eigenen schreibberechtigten GitHub-Deploy-Key, der ausschließlich für `obause/pi-docker` gilt. `origin` verwendet SSH; der zugehörige Schlüssel und die SSH-Optionen sind nur in der lokalen Git-Konfiguration dieses Repositories hinterlegt. Dadurch benötigt der Pi weder einen persönlichen GitHub-Token noch Agent-Forwarding vom Laptop.
+
+Der private Deploy-Key wird bewusst nicht kopiert oder in Git beziehungsweise Borg archiviert. Bei einem vollständigen Host-Restore wird ein neues Schlüsselpaar erzeugt und der öffentliche Deploy-Key in GitHub ersetzt.

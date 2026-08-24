@@ -71,6 +71,18 @@ sudo BORG_RSH='ssh -F /dev/null -i /home/obause/.ssh/id_ed25519_storagebox_backu
 
 Nach einer vollständigen Neuinstallation muss zuerst ein neuer SSH-Key beim Storage-Box-Sub-Account hinterlegt werden. Der Borg-Inhalt benötigt keine zusätzliche Passphrase.
 
+### GitHub-Deploy-Key
+
+Der private GitHub-Deploy-Key für `obause/pi-docker` liegt ausschließlich auf dem Pi und wird bewusst weder nach Git noch in das Borg-Repository kopiert. Nach einem vollständigen Hostverlust:
+
+1. auf dem neuen Pi ein dediziertes Ed25519-Schlüsselpaar erzeugen
+2. den öffentlichen Schlüssel in GitHub als schreibberechtigten Deploy-Key ausschließlich für `obause/pi-docker` registrieren
+3. `origin` auf `git@github.com:obause/pi-docker.git` setzen
+4. den Schlüssel mit `core.sshCommand` nur in der lokalen Git-Konfiguration dieses Repositories auswählen
+5. `git fetch` und `git push --dry-run` prüfen
+
+Der alte Deploy-Key wird danach in GitHub entfernt. Persönliche GitHub-Tokens oder private Laptop-Schlüssel gehören nicht auf den Pi.
+
 ### Servicezustand wiederherstellen
 
 Laufzeitdaten niemals direkt über einen schreibenden Container extrahieren. Für Home Assistant, Zigbee2MQTT, Pi-hole oder Matter gilt:
