@@ -31,6 +31,9 @@ Austausch des öffentlichen Deploy-Keys steht in `backup.md`.
   direkten Docker-Socket-Mount
 
 Docker liefert auf diesem Host derzeit keine nutzbaren Container-RAM-Werte.
+Beim Neuerstellen von Agent Zero meldete Docker außerdem ausdrücklich, dass
+der Kernel Memory-Limits nicht unterstützt beziehungsweise der Controller
+nicht eingehängt ist; das vorhandene `mem_limit: 2g` wurde verworfen.
 Speicherlimits werden deshalb erst nach einer separaten Prüfung der
 Memory-Controller-Konfiguration festgelegt.
 
@@ -51,3 +54,18 @@ Im Startfenster traten drei Geräte-Konfigurationsversuche mit
 MQTT- oder Netzwerkabbrüche. Diese gerätespezifischen Meldungen werden getrennt
 von der Container-Health behandelt und bei Bedarf anhand des betroffenen
 Gerätemodells untersucht.
+
+## Home Assistant, Matter und Agent Zero
+
+Home Assistant prüft seinen lokalen HTTP-Endpunkt auf Port 8123, Matter seinen
+Endpunkt auf Port 5580. Beide verwenden dafür das bereits im Image vorhandene
+Python-Standardmodul. Nach der gezielten Neuerstellung waren beide Container
+healthy und ohne Neustarts; Home Assistant antwortete mit HTTP 200 und stellte
+die Matter-WebSocket-Verbindung ohne Fehler wieder her.
+
+Agent Zero prüft seinen lokalen HTTP-Endpunkt auf Container-Port 80. Die
+Anwendung benötigt auf dem Raspberry Pi bei einem Kaltstart deutlich länger
+als eine Minute, während sie CPU-intensiv initialisiert. Das Healthcheck-
+Startfenster beträgt deshalb drei Minuten. Datenvolume und OAuth-/Chat-Zustand
+blieben unverändert; nach der Initialisierung waren Healthcheck und die nur an
+`127.0.0.1:50080` veröffentlichte Oberfläche healthy beziehungsweise HTTP 200.

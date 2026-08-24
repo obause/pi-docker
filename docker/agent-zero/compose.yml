@@ -6,6 +6,12 @@ services:
     image: agent-zero-pi:v2.10-torch2.4.1
     container_name: agent-zero
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:80/', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 180s
     ports:
       - "127.0.0.1:50080:80"
     volumes:
