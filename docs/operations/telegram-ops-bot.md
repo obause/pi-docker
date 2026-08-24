@@ -159,6 +159,33 @@ hält die Startdatei einen privaten FIFO unter
 und verhindert die sonst bei systemd sofort eintretende Neustartschleife. Er
 bleibt zugleich der vom Connector vorgesehene lokale JSONL-Steuerkanal.
 
+### Bedienung im Agent-Zero-Bot
+
+Antwort-Streaming und Werkzeugfortschritt sind für neue Telegram-Kontexte
+standardmäßig aktiv. Die wichtigsten Befehle sind:
+
+- `/commands`: vollständige Befehlsübersicht
+- `/status`: Zustand des Agent-Zero-Laufs; der Raspberry-Pi-Systemstatus liegt
+  weiterhin beim separaten Operations Bot
+- `/stream` und `/tools`: Live-Antwort beziehungsweise Werkzeugfortschritt
+  anzeigen und ein-/ausschalten
+- `/queue` und `/send`: wartende Aufgaben ansehen beziehungsweise absenden
+- `/steer <Hinweis>`: einen laufenden Agenten mit einer neuen Anweisung
+  unterbrechen und umlenken
+- `/pause`, `/resume` und `/nudge`: Lauf anhalten, fortsetzen oder erneut
+  anstoßen
+- `/sessions`, `/new` und `/clear`: Unterhaltungen auswählen, neu beginnen
+  oder zurücksetzen
+- `/project`, `/model` und `/agent`: Projekt, Modell oder Agentenprofil für den
+  aktuellen Kontext auswählen
+
+Freie Aufgaben sollten Ziel, erlaubte Änderungen, Prüfungen und gegebenenfalls
+eine Bestätigungsgrenze ausdrücklich nennen. Beispiel:
+
+> Analysiere den Fehler zunächst nur lesend. Erkläre Ursache und geplante
+> Änderungen. Warte vor Änderungen auf meine Bestätigung und verifiziere danach
+> Containerzustand und relevante Logs.
+
 ### Betrieb des Host-Gateways
 
 ```sh
