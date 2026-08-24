@@ -20,3 +20,5 @@ providers:
 
 api:
   dashboard: true
+
+ping: {}

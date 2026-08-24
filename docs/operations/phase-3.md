@@ -69,3 +69,20 @@ als eine Minute, während sie CPU-intensiv initialisiert. Das Healthcheck-
 Startfenster beträgt deshalb drei Minuten. Datenvolume und OAuth-/Chat-Zustand
 blieben unverändert; nach der Initialisierung waren Healthcheck und die nur an
 `127.0.0.1:50080` veröffentlichte Oberfläche healthy beziehungsweise HTTP 200.
+
+## Traefik und Docker-Socket-Proxy
+
+Der Socket-Proxy prüft lokal Dockers `_ping`-Endpunkt auf Port 2375. Traefik
+startet erst, nachdem der Proxy healthy ist. Traefiks offizieller interner
+`/ping`-Endpunkt ist in der statischen Konfiguration aktiviert und wird mit dem
+im Image enthaltenen Befehl `traefik healthcheck` geprüft.
+
+Nach der gezielten Neuerstellung waren beide Container healthy, ohne Neustarts
+oder neue Fehler. Die TLS-Routen für Pi-hole, Zigbee2MQTT, Portainer und das
+Traefik-Dashboard antworteten weiterhin mit den erwarteten HTTP-Statuscodes.
+
+Portainers Image enthält weder Shell noch HTTP-Client und der vorhandene
+Portainer-Binary bietet keinen erfolgreichen eingebauten Healthcheck. Portainer
+wird deshalb später über das Host-Monitoring seines HTTPS-Endpunkts geprüft.
+Für Govee2MQTT und Cloudflare-DDNS wird ebenfalls kein künstlicher reiner
+Prozesscheck ergänzt; ihre Funktionsprüfung gehört in das externe Monitoring.
