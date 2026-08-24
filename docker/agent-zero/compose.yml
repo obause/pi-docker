@@ -1,0 +1,19 @@
+services:
+  agent-zero:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: agent-zero-pi:v2.10-torch2.4.1
+    container_name: agent-zero
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:50080:80"
+    volumes:
+      - agent-zero-data:/a0/usr
+    mem_limit: 2g
+    cpus: 2.0
+    shm_size: 512m
+
+volumes:
+  agent-zero-data:
+    name: agent-zero-data

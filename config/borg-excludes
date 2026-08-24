@@ -1,0 +1,17 @@
+sh:home/obause/pi-docker/.git
+sh:home/obause/pi-docker/docker/home-assistant/.cache
+sh:home/obause/pi-docker/docker/home-assistant/home-assistant.log*
+sh:home/obause/pi-docker/docker/home-assistant/home-assistant_v2.db*
+sh:srv/pi-docker/home-assistant/config/.cache
+sh:srv/pi-docker/home-assistant/config/deps
+sh:srv/pi-docker/home-assistant/config/tts
+sh:srv/pi-docker/home-assistant/config/home-assistant.log*
+sh:srv/pi-docker/home-assistant/config/home-assistant_v2.db*
+sh:srv/pi-docker/home-assistant/config/.ha_run.lock
+sh:srv/pi-docker/zigbee2mqtt/data/log
+sh:home/obause/pi-docker/docker/mosquitto/log
+sh:home/obause/pi-docker/docker/var-log
+sh:**/__pycache__
+sh:**/*.pyc
+sh:**/.DS_Store
+sh:var/lib/docker/volumes/*/_data/govee2mqtt-cache.sqlite*

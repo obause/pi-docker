@@ -20,10 +20,3 @@ providers:
 
 api:
   dashboard: true
-
-tls:
-  stores:
-    default:
-      defaultCertificate:
-        certFile: "/certs/bause.lan.crt"
-        keyFile: "/certs/bause.lan.key"

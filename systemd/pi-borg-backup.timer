@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily Raspberry Pi Borg backup
+
+[Timer]
+OnCalendar=*-*-* 06:30:00 Europe/Berlin
+RandomizedDelaySec=15m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

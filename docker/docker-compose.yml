@@ -45,8 +45,9 @@ services:
       - ./traefik/traefik.yml:/traefik.yml:ro
       - ./traefik/dynamic:/dynamic:ro
       - ./traefik/certs:/certs:ro
+      - /etc/pi-docker/secrets/traefik:/run/secrets/traefik:ro
       # ACME-Ordner nur falls du irgendwann Let's Encrypt nutzt:
-      - ./traefik/acme:/acme
+      - /srv/pi-docker/traefik/acme:/acme
     networks: [proxy]
     labels:
       traefik.enable: "true"
@@ -83,12 +84,9 @@ services:
     restart: always
     environment:
       TZ: ${TZ}
-      WEBPASSWORD: ${WEBPASSWORD}
       FTLCONF_LOCAL_IPV4: 192.168.178.5
     volumes:
-      - ./pihole/conf/:/etc/pihole/
-      - ./pihole/dnsmasq.d/conf/:/etc/dnsmasq.d/
-      - ./var-log/pihole.log:/var/log/pihole.log
+      - /srv/pi-docker/pihole/etc-pihole:/etc/pihole
     networks: [app-nw, proxy]
     ports:
       - "53:53/tcp"
@@ -109,28 +107,6 @@ services:
       traefik.http.routers.pihole.middlewares: pihole-admin
 
   # -- WireGuard (nicht über Traefik) --
-  wg-easy:
-    container_name: wg-easy
-    image: ghcr.io/wg-easy/wg-easy
-    environment:
-      - PASSWORD=test
-      - WG_HOST=217.252.201.193
-    volumes:
-      - ./wireguard:/etc/wireguard
-      - /lib/modules:/lib/modules
-    ports:
-      - "51820:51820/udp"
-      - "51821:51821/tcp"
-    restart: unless-stopped
-    cap_add:
-      - NET_ADMIN
-      - SYS_MODULE
-    sysctls:
-      - net.ipv4.ip_forward=1
-      - net.ipv4.conf.all.src_valid_mark=1
-    networks: [app-nw]
-
-  # -- Cloudflare-DDNS (host network wie gehabt) --
   cloudflare-ddns:
     container_name: dyndns
     image: favonia/cloudflare-ddns:latest
@@ -183,7 +159,16 @@ services:
     environment:
       - TZ=${TZ}
     volumes:
-      - ./home-assistant:/config
+      - /srv/pi-docker/home-assistant/config:/config
+      - ./home-assistant/configuration.yaml:/config/configuration.yaml
+      - ./home-assistant/automations.yaml:/config/automations.yaml
+      - ./home-assistant/scripts.yaml:/config/scripts.yaml
+      - ./home-assistant/scenes.yaml:/config/scenes.yaml
+      - ./home-assistant/blueprints:/config/blueprints
+      - ./home-assistant/custom_components:/config/custom_components
+      - ./home-assistant/themes:/config/themes
+      - ./home-assistant/ui_lovelace_minimalist:/config/ui_lovelace_minimalist
+      - /etc/pi-docker/secrets/home-assistant/secrets.yaml:/config/secrets.yaml:ro
       - /etc/localtime:/etc/localtime:ro
       - /run/dbus:/run/dbus:ro
     # devices:
@@ -198,6 +183,7 @@ services:
     volumes:
       - mosquitto_data:/mosquitto/data
       - ./mosquitto/config:/mosquitto/config
+      - /etc/pi-docker/secrets/mosquitto.passwords:/mosquitto/config/passwords:ro
       - ./mosquitto/log:/mosquitto/log
     # HA läuft im host network → Port 1883 am Host veröffentlichen
     ports:
@@ -211,13 +197,15 @@ services:
     depends_on: [mosquitto]
     networks: [iot, proxy]
     volumes:
-      - ./zigbee2mqtt/data:/app/data
+      - /srv/pi-docker/zigbee2mqtt/data:/app/data
       - /run/udev:/run/udev:ro
     # Wenn du USB-Dongle nutzt, devices freigeben (by-id verwenden!):
     # devices:
     #   - /dev/serial/by-id/usb-<DEIN_DONGLE>:/dev/ttyUSB0
     environment:
-      - TZ=${TZ}
+      TZ: ${TZ}
+      ZIGBEE2MQTT_CONFIG_MQTT_USER: ${MQTT_USER}
+      ZIGBEE2MQTT_CONFIG_MQTT_PASSWORD: ${MQTT_PASSWORD}
     labels:
       traefik.enable: "true"
       traefik.docker.network: "proxy"
@@ -256,7 +244,7 @@ services:
     security_opt:
       - apparmor=unconfined
     volumes:
-      - ./matter-server:/data
+      - /srv/pi-docker/matter-server/data:/data
       - /run/dbus:/run/dbus:ro
     environment:
       - TZ=${TZ}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Raspberry Pi backup to Hetzner Storage Box over SSH
+Documentation=file:/home/obause/pi-docker/docs/operations/backup.md
+Wants=network-online.target
+After=network-online.target docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pi-borg-backup
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

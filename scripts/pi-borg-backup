@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export BORG_REPO='ssh://u355613-sub6@u355613-sub6.your-storagebox.de:23/./pi-borg'
+export BORG_RSH='ssh -F /dev/null -i /home/obause/.ssh/id_ed25519_storagebox_backup -o IdentitiesOnly=yes -o UserKnownHostsFile=/home/obause/.ssh/known_hosts_storagebox -o StrictHostKeyChecking=yes'
+export BORG_REMOTE_PATH='borg-1.2'
+export BORG_UNKNOWN_UNENCRYPTED_REPO_ACCESS_IS_OK='yes'
+export BORG_RELOCATED_REPO_ACCESS_IS_OK='no'
+
+readonly EXCLUDES='/etc/pi-docker/borg/excludes'
+
+sources=(
+  /home/obause/pi-docker
+  /home/obause/.config/systemd/user
+  /home/obause/.local/bin
+  /home/obause/.ssh/authorized_keys
+  /etc
+  /boot/firmware
+  /var/spool/cron
+  /var/lib/docker/volumes
+  /srv/pi-docker
+)
+
+existing_sources=()
+for source in "${sources[@]}"; do
+  if [[ -e "$source" ]]; then
+    existing_sources+=("$source")
+  fi
+done
+
+archive="{hostname}-{now:%Y-%m-%dT%H:%M:%S}"
+result=0
+
+run_borg() {
+  local rc
+  set +e
+  borg "$@"
+  rc=$?
+  set -e
+  if (( rc > result )); then
+    result=$rc
+  fi
+  return 0
+}
+
+run_borg create \
+  --show-rc \
+  --stats \
+  --numeric-ids \
+  --compression zstd,3 \
+  --exclude-caches \
+  --exclude-from "$EXCLUDES" \
+  "::$archive" \
+  "${existing_sources[@]}"
+
+run_borg prune \
+  --show-rc \
+  --list \
+  --glob-archives '{hostname}-*' \
+  --keep-daily 7 \
+  --keep-weekly 4 \
+  --keep-monthly 6
+
+run_borg compact --show-rc
+
+exit "$result"

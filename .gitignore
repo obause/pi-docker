@@ -1,3 +1,21 @@
+# Secrets and host-local runtime entry points
+docker/.env
+docker/wireguard/
+runtime
+
+# Service credentials and identity state
+docker/home-assistant/secrets.yaml
+docker/home-assistant/.HA_VERSION
+docker/mosquitto/config/passwords
+docker/pihole/conf/
+docker/pihole/dnsmasq.d/
+docker/var-log/pihole.log/
+docker/traefik/certs/*.key
+docker/traefik/acme/
+docker/zigbee2mqtt/data/
+docker/matter-server/
+docker/agent-zero/usr/
+
 # optional: only if you do not want to version these assets
 docker/home-assistant/image/
 docker/home-assistant/www/
