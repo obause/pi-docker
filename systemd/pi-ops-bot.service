@@ -1,5 +1,5 @@
 [Unit]
-Description=Private read-only Telegram operations bot
+Description=Private Telegram operations and confirmed maintenance bot
 After=network-online.target pi-ops-status-server.service
 Wants=network-online.target pi-ops-status-server.service
 

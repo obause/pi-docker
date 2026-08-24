@@ -1,4 +1,4 @@
-# Telegram Operations Bot – Phase A und B
+# Telegram Operations Bot – Phase A bis C
 
 Stand: 24. August 2026
 
@@ -54,6 +54,38 @@ zeigt den aktuellen Zustand. Logtexte aus Docker, Zigbee2MQTT, Borg oder dem
 Kernel werden nie an Telegram übertragen. Die Diagnosezähler sind bewusst als
 Hinweise und nicht als eindeutige Einzelereignisse gekennzeichnet.
 
+## Phase C: Bestätigte Wartung
+
+`/maintenance` öffnet die zustandsändernde Wartungsansicht. `/restart` zeigt
+die feste Containerliste; `/restart <name>` bereitet den Neustart eines exakt
+benannten Containers vor. Unterstützt werden:
+
+- den vorhandenen Host-Healthcheck einmal ausführen
+- einen Borg-Backup-Lauf im Hintergrund starten
+- genau einen der elf bekannten Container neu starten
+- einen Raspberry-Pi-Neustart mit 15 Sekunden Vorlauf planen
+
+Die Auswahl führt noch keine Aktion aus. Der lokale root-Dienst erzeugt dafür
+ein kryptografisch zufälliges Einmal-Token, speichert Aktion und Ablaufzeit nur
+im Arbeitsspeicher und liefert eine Beschreibung der Auswirkung. Erst der
+zweite Telegram-Button bestätigt dieses Token serverseitig. Tokens verfallen
+nach 90 Sekunden, werden nach Bestätigung oder Abbruch entfernt und überstehen
+keinen Neustart des lokalen Dienstes.
+
+Chat-/Benutzer-Allowlist und Tokenprüfung wirken gemeinsam: Telegrams Button
+ist keine Berechtigung, und der Bot kann keine vom lokalen Dienst unbekannte
+Aktion oder ein zusätzliches Argument einschleusen. Der lokale Socket-Dienst
+akzeptiert ausschließlich:
+
+- `health-check`, `backup` und `reboot`
+- `restart` für einen Namen aus derselben fest codierten Container-Allowlist
+
+Ausführung und Ergebnis werden ohne Token, Chat-ID oder Benutzer-ID im
+systemd-Journal des Statusdienstes protokolliert. Docker-Prune, automatische
+Image-/Systemupdates, Compose-Änderungen und freie Shellbefehle sind nicht Teil
+von Phase C. Solche Änderungen benötigen einen individuellen Plan und gehören
+in die kontrollierte Agent-Zero-Integration von Phase D.
+
 ## Sicherheitsmodell
 
 `pi-ops-bot.service` läuft als eigener Systembenutzer `pi-ops-bot` mit
@@ -69,10 +101,11 @@ von Telegrams sichtbarem Befehlsmenü unabhängig.
 Für Statusdaten besitzt der Bot weder Docker-Socket-Zugriff noch Sudo-Rechte.
 Ein separater lokaler Dienst läuft als root ohne Netzwerkzugriff und nimmt über
 den gruppengeschützten Unix-Socket `/run/pi-ops-status/status.sock`
-ausschließlich fest codierte Leseabfragen an. Ungültige oder zusätzliche
-Argumente werden verworfen. Das Hilfsprogramm bietet keine Shell-, Restart-,
-Schreib-, Update- oder Backup-Aktion und gibt weder Logs der Anwendungen noch
-Secrets, Gerätenamen, Adressen, Mounts oder Umgebungsvariablen aus.
+ausschließlich fest codierte Statusabfragen und das Bestätigungsprotokoll aus
+Phase C an. Ungültige Aktionen, Ziele oder zusätzliche Argumente werden
+verworfen. Freie Shell-, Prune-, Update- oder Konfigurationsaktionen existieren
+nicht. Statusausgaben enthalten weder Logs der Anwendungen noch Secrets,
+Gerätenamen, Adressen, Mounts oder Umgebungsvariablen.
 
 Der Long-Polling-Offset liegt unter `/var/lib/pi-ops-bot/offset`, damit bereits
 verarbeitete Nachrichten nach einem Neustart nicht erneut ausgeführt werden.

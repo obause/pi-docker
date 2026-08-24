@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
-"""Serve a fixed set of read-only host summaries on a local Unix socket."""
+"""Serve fixed host summaries and confirmed maintenance on a local Unix socket."""
 
 from __future__ import annotations
 
 import os
 from pathlib import Path
+import re
+import secrets
 import socket
 import subprocess
+import time
 
 
 SOCKET_PATH = Path("/run/pi-ops-status/status.sock")
@@ -25,28 +28,201 @@ COMMANDS = {
     "history-24h",
     "history-7d",
 }
-MAX_REQUEST = 64
+MAX_REQUEST = 128
 MAX_RESPONSE = 3900
+CONFIRM_TTL = 90
+MAX_PENDING = 16
+TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,32}$")
+CONTAINERS = (
+    "agent-zero",
+    "docker-socket-proxy-1",
+    "dyndns",
+    "govee2mqtt",
+    "homeassistant",
+    "matter-server",
+    "mosquitto",
+    "pihole",
+    "portainer",
+    "traefik",
+    "zigbee2mqtt",
+)
+PENDING: dict[str, tuple[float, str]] = {}
 
 
-def execute(command: str) -> bytes:
+def run_command(arguments: list[str], timeout: int = 45) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        arguments,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+        env={"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+    )
+
+
+def execute_status(command: str) -> bytes:
     if command not in COMMANDS:
         return b"ERROR\nunsupported request\n"
     try:
-        result = subprocess.run(
-            ["/usr/local/sbin/pi-ops-status", command],
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=40,
-            env={"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
-        )
+        result = run_command(["/usr/local/sbin/pi-ops-status", command], timeout=40)
     except (OSError, subprocess.TimeoutExpired):
         return b"ERROR\nstatus unavailable\n"
     output = result.stdout.strip()
     if result.returncode != 0 or not output:
         return b"ERROR\nstatus unavailable\n"
     return f"OK\n{output[:MAX_RESPONSE]}\n".encode("utf-8")
+
+
+def action_description(action: str) -> str | None:
+    if action == "health-check":
+        return (
+            "Health-Check jetzt ausführen?\n"
+            "Der vollständige Host-/Docker-Check läuft einmal und aktualisiert den Monitorzustand."
+        )
+    if action == "backup":
+        return (
+            "Borg-Backup jetzt starten?\n"
+            "Der Lauf startet im Hintergrund und kann Datenträger, CPU und Upload beanspruchen."
+        )
+    if action == "reboot":
+        return (
+            "Raspberry Pi wirklich neu starten?\n"
+            "Der Neustart wird nach 15 Sekunden geplant; alle Container sind vorübergehend nicht erreichbar."
+        )
+    if action.startswith("restart:"):
+        container = action.removeprefix("restart:")
+        if container in CONTAINERS:
+            extra = ""
+            if container == "mosquitto":
+                extra = " MQTT-Clients einschließlich Zigbee2MQTT müssen sich kurz neu verbinden."
+            elif container == "docker-socket-proxy-1":
+                extra = " Traefiks Docker-Erkennung ist kurz unterbrochen."
+            return f"Container {container} neu starten?\nDer Dienst ist kurzzeitig nicht erreichbar.{extra}"
+    return None
+
+
+def prune_pending() -> None:
+    now = time.monotonic()
+    for token, (expires, _) in list(PENDING.items()):
+        if expires <= now:
+            PENDING.pop(token, None)
+    while len(PENDING) >= MAX_PENDING:
+        oldest = min(PENDING, key=lambda item: PENDING[item][0])
+        PENDING.pop(oldest, None)
+
+
+def prepare_action(action: str) -> bytes:
+    description = action_description(action)
+    if description is None:
+        return b"ERROR\nunsupported action\n"
+    prune_pending()
+    token = secrets.token_urlsafe(18)
+    PENDING[token] = (time.monotonic() + CONFIRM_TTL, action)
+    print(f"Aktion vorbereitet: {action}", flush=True)
+    return f"CONFIRM\n{token}\n{description}\nBestätigung verfällt nach {CONFIRM_TTL} Sekunden.\n".encode("utf-8")
+
+
+def execute_action(action: str) -> tuple[bool, str]:
+    try:
+        if action == "health-check":
+            result = run_command(["systemctl", "start", "pi-health-check.service"], timeout=60)
+            if result.returncode != 0:
+                return False, "Health-Check konnte nicht gestartet werden."
+            state = run_command(
+                ["systemctl", "show", "pi-health-check.service", "--property=Result", "--value"],
+                timeout=10,
+            ).stdout.strip()
+            if state == "success":
+                return True, "✅ Health-Check abgeschlossen: Systemzustand erfolgreich."
+            return False, f"Health-Check abgeschlossen, Ergebnis: {state or 'unbekannt'}."
+
+        if action == "backup":
+            active = run_command(["systemctl", "is-active", "pi-borg-backup.service"], timeout=10)
+            if active.returncode == 0:
+                return True, "ℹ️ Das Borg-Backup läuft bereits."
+            result = run_command(
+                ["systemctl", "start", "--no-block", "pi-borg-backup.service"],
+                timeout=15,
+            )
+            if result.returncode != 0:
+                return False, "Borg-Backup konnte nicht gestartet werden."
+            return True, "✅ Borg-Backup wurde im Hintergrund gestartet. Den Fortschritt zeigt /backup."
+
+        if action.startswith("restart:"):
+            container = action.removeprefix("restart:")
+            if container not in CONTAINERS:
+                return False, "Container ist nicht freigegeben."
+            result = run_command(["docker", "restart", "--time", "30", container], timeout=45)
+            if result.returncode != 0:
+                return False, f"Container {container} konnte nicht neu gestartet werden."
+            inspect = run_command(
+                [
+                    "docker",
+                    "inspect",
+                    "--format",
+                    "{{.State.Status}}{{if .State.Health}} / {{.State.Health.Status}}{{end}}",
+                    container,
+                ],
+                timeout=10,
+            )
+            state = inspect.stdout.strip() or "Status noch unbekannt"
+            return True, f"✅ Container {container} wurde neu gestartet. Aktuell: {state}."
+
+        if action == "reboot":
+            result = run_command(
+                [
+                    "systemd-run",
+                    "--quiet",
+                    "--unit=pi-ops-delayed-reboot",
+                    "--on-active=15s",
+                    "/usr/bin/systemctl",
+                    "reboot",
+                ],
+                timeout=15,
+            )
+            if result.returncode != 0:
+                return False, "Host-Neustart konnte nicht geplant werden."
+            return True, "✅ Raspberry-Pi-Neustart ist in 15 Sekunden geplant."
+    except (OSError, subprocess.TimeoutExpired):
+        return False, "Wartungsaktion ist fehlgeschlagen oder hat das Zeitlimit überschritten."
+    return False, "Wartungsaktion ist nicht freigegeben."
+
+
+def confirm_action(token: str) -> bytes:
+    prune_pending()
+    pending = PENDING.pop(token, None)
+    if pending is None:
+        return "ERROR\nBestätigung ist ungültig oder abgelaufen.\n".encode("utf-8")
+    _, action = pending
+    print(f"Aktion bestätigt: {action}", flush=True)
+    success, message = execute_action(action)
+    print(f"Aktion beendet: {action} result={'success' if success else 'failed'}", flush=True)
+    prefix = "OK" if success else "ERROR"
+    return f"{prefix}\n{message}\n".encode("utf-8")
+
+
+def cancel_action(token: str) -> bytes:
+    prune_pending()
+    pending = PENDING.pop(token, None)
+    if pending is None:
+        return "ERROR\nBestätigung ist ungültig oder abgelaufen.\n".encode("utf-8")
+    _, action = pending
+    print(f"Aktion abgebrochen: {action}", flush=True)
+    return b"OK\nAktion wurde abgebrochen.\n"
+
+
+def handle_request(request: str) -> bytes:
+    if request in COMMANDS:
+        return execute_status(request)
+    if request.startswith("prepare:"):
+        return prepare_action(request.removeprefix("prepare:"))
+    if request.startswith("confirm:"):
+        token = request.removeprefix("confirm:")
+        return confirm_action(token) if TOKEN_PATTERN.fullmatch(token) else b"ERROR\ninvalid confirmation\n"
+    if request.startswith("cancel:"):
+        token = request.removeprefix("cancel:")
+        return cancel_action(token) if TOKEN_PATTERN.fullmatch(token) else b"ERROR\ninvalid confirmation\n"
+    return b"ERROR\nunsupported request\n"
 
 
 def receive_request(connection: socket.socket) -> str | None:
@@ -83,7 +259,7 @@ def main() -> int:
                     connection.settimeout(45)
                     try:
                         command = receive_request(connection)
-                        response = execute(command) if command is not None else b"ERROR\ninvalid request\n"
+                        response = handle_request(command) if command is not None else b"ERROR\ninvalid request\n"
                         connection.sendall(response)
                     except (OSError, TimeoutError):
                         pass

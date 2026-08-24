@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Private, read-only Telegram operations bot for the Raspberry Pi."""
+"""Private Telegram operations bot with confirmed maintenance actions."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ import urllib.request
 
 
 TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
-COMMAND_PATTERN = re.compile(r"^/([a-z]+)(?:@[A-Za-z0-9_]+)?(?:\s|$)")
+COMMAND_PATTERN = re.compile(r"^/([a-z_]+)(?:@[A-Za-z0-9_]+)?(?:\s|$)")
 STATUS_COMMANDS = {"status", "zigbee", "containers", "backup", "host", "alerts"}
 DIAGNOSTIC_VIEWS = {
     "diagnose-overview",
@@ -30,10 +30,26 @@ HISTORY_VIEWS = {"history-24h", "history-7d"}
 SERVER_COMMANDS = STATUS_COMMANDS | DIAGNOSTIC_VIEWS | HISTORY_VIEWS
 STATUS_SOCKET = "/run/pi-ops-status/status.sock"
 MAX_SOCKET_RESPONSE = 16384
+CONFIRM_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9_-]{20,32}$")
+CONTAINER_NAMES = (
+    "agent-zero",
+    "docker-socket-proxy-1",
+    "dyndns",
+    "govee2mqtt",
+    "homeassistant",
+    "matter-server",
+    "mosquitto",
+    "pihole",
+    "portainer",
+    "traefik",
+    "zigbee2mqtt",
+)
 COMMAND_DESCRIPTIONS = [
     ("status", "Gesamtstatus anzeigen"),
     ("diagnose", "Geführte Diagnose starten"),
     ("history", "Statusverlauf anzeigen"),
+    ("maintenance", "Bestätigte Wartung öffnen"),
+    ("restart", "Container-Neustart vorbereiten"),
     ("zigbee", "Zigbee-Funkpfad prüfen"),
     ("containers", "Containerstatus anzeigen"),
     ("backup", "Backupstatus anzeigen"),
@@ -86,6 +102,40 @@ def load_config(path: Path) -> tuple[str, int, int]:
 
 
 def keyboard(command: str | None = None) -> dict:
+    if command in {"maintenance", "action-result"}:
+        return {
+            "inline_keyboard": [
+                [
+                    {"text": "🩺 Health-Check", "callback_data": "act:prepare:health-check"},
+                    {"text": "💾 Backup starten", "callback_data": "act:prepare:backup"},
+                ],
+                [
+                    {"text": "📡 Zigbee2MQTT neu", "callback_data": "act:prepare:restart:zigbee2mqtt"},
+                    {"text": "🐳 Container wählen", "callback_data": "restart:list"},
+                ],
+                [{"text": "⚠️ Raspberry Pi neu starten", "callback_data": "act:prepare:reboot"}],
+                [
+                    {"text": "📊 Status", "callback_data": "show:status"},
+                    {"text": "☰ Menü", "callback_data": "menu"},
+                ],
+            ]
+        }
+    if command == "restart-list":
+        rows = []
+        for index in range(0, len(CONTAINER_NAMES), 2):
+            rows.append(
+                [
+                    {"text": name, "callback_data": f"act:prepare:restart:{name}"}
+                    for name in CONTAINER_NAMES[index : index + 2]
+                ]
+            )
+        rows.append(
+            [
+                {"text": "← Wartung", "callback_data": "maintenance"},
+                {"text": "☰ Menü", "callback_data": "menu"},
+            ]
+        )
+        return {"inline_keyboard": rows}
     if command in DIAGNOSTIC_VIEWS:
         rows = [
             [
@@ -137,6 +187,7 @@ def keyboard(command: str | None = None) -> dict:
             {"text": "🔔 Warnungen", "callback_data": "show:alerts"},
             {"text": "🕓 Verlauf", "callback_data": "history:24h"},
         ],
+        [{"text": "🛠 Bestätigte Wartung", "callback_data": "maintenance"}],
     ]
     if command in STATUS_COMMANDS:
         rows.append([
@@ -149,9 +200,9 @@ def keyboard(command: str | None = None) -> dict:
 def menu_text() -> str:
     return (
         "🤖 Raspberry-Pi Operations Bot\n\n"
-        "Phase A und B sind rein lesend: Ich zeige sichere Statusdaten, führe durch Diagnosen "
-        "und fasse den Verlauf zusammen. "
-        "Ich kann keine Container neu starten, Konfigurationen ändern oder Backups auslösen.\n\n"
+        "Status, Diagnose und Verlauf sind rein lesend. In der Wartungsansicht kann ich "
+        "wenige fest definierte Aktionen ausführen – immer erst nach einer zweiten, "
+        "serverseitig geprüften Bestätigung.\n\n"
         "Wähle einen Bereich oder sende /help."
     )
 
@@ -165,16 +216,14 @@ def help_text() -> str:
     )
 
 
-def run_status(command: str) -> str:
-    if command not in SERVER_COMMANDS:
-        return help_text()
+def socket_request(request: str) -> tuple[str, list[str]]:
     try:
         chunks: list[bytes] = []
         received = 0
         with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:
-            connection.settimeout(25)
+            connection.settimeout(65)
             connection.connect(STATUS_SOCKET)
-            connection.sendall(f"{command}\n".encode("ascii"))
+            connection.sendall(f"{request}\n".encode("ascii"))
             connection.shutdown(socket.SHUT_WR)
             while received < MAX_SOCKET_RESPONSE:
                 chunk = connection.recv(min(1024, MAX_SOCKET_RESPONSE - received))
@@ -184,12 +233,74 @@ def run_status(command: str) -> str:
                 received += len(chunk)
         output = b"".join(chunks).decode("utf-8").strip()
     except (OSError, TimeoutError, UnicodeDecodeError):
+        return "ERROR", ["Lokaler Aktionsdienst ist momentan nicht verfügbar."]
+    if not output:
+        return "ERROR", ["Lokaler Aktionsdienst lieferte keine Antwort."]
+    lines = output.splitlines()
+    return lines[0], lines[1:]
+
+
+def run_status(command: str) -> str:
+    if command not in SERVER_COMMANDS:
+        return help_text()
+    status, lines = socket_request(command)
+    if status != "OK" or not lines:
         return "🔴 Statusabfrage ist momentan nicht verfügbar."
-    if not output or output.startswith("ERROR\n"):
-        return "🔴 Statusabfrage ist momentan nicht verfügbar."
-    if output.startswith("OK\n"):
-        output = output[3:]
-    return output[:3900]
+    return "\n".join(lines)[:3900]
+
+
+def action_allowed(action: str) -> bool:
+    if action in {"health-check", "backup", "reboot"}:
+        return True
+    return action.startswith("restart:") and action.removeprefix("restart:") in CONTAINER_NAMES
+
+
+def prepare_action(action: str) -> tuple[str | None, str]:
+    if not action_allowed(action):
+        return None, "🔴 Diese Wartungsaktion ist nicht freigegeben."
+    status, lines = socket_request(f"prepare:{action}")
+    if status != "CONFIRM" or len(lines) < 2 or not CONFIRM_TOKEN_PATTERN.fullmatch(lines[0]):
+        return None, "🔴 Bestätigung konnte nicht vorbereitet werden."
+    return lines[0], "⚠️ Bestätigung erforderlich\n\n" + "\n".join(lines[1:])
+
+
+def finish_action(operation: str, token: str) -> str:
+    if operation not in {"confirm", "cancel"} or not CONFIRM_TOKEN_PATTERN.fullmatch(token):
+        return "🔴 Bestätigung ist ungültig."
+    status, lines = socket_request(f"{operation}:{token}")
+    if not lines:
+        return "🔴 Wartungsdienst lieferte kein Ergebnis."
+    text = "\n".join(lines)
+    if status == "OK":
+        return text
+    return f"🔴 {text}"
+
+
+def confirmation_keyboard(token: str) -> dict:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Jetzt ausführen", "callback_data": f"act:confirm:{token}"},
+                {"text": "Abbrechen", "callback_data": f"act:cancel:{token}"},
+            ]
+        ]
+    }
+
+
+def maintenance_text() -> str:
+    return (
+        "🛠 Bestätigte Wartung\n\n"
+        "Jede Aktion besitzt eine feste Zielmenge. Nach der Auswahl erscheint eine zweite "
+        "Bestätigung, die nach 90 Sekunden verfällt und nur einmal verwendet werden kann.\n\n"
+        "Nicht angeboten werden Shellbefehle, Docker-Prune oder automatische Updates."
+    )
+
+
+def restart_list_text() -> str:
+    return (
+        "🐳 Container neu starten\n\n"
+        "Wähle genau einen bekannten Container. Vor dem Neustart folgt noch die verbindliche Bestätigung."
+    )
 
 
 def text_intent(text: str) -> str | None:
@@ -260,11 +371,18 @@ def authorized_callback(callback: object, chat_id: int, user_id: int) -> bool:
     )
 
 
-def send_view(token: str, chat_id: int, text: str, command: str | None = None, message_id: int | None = None) -> None:
+def send_view(
+    token: str,
+    chat_id: int,
+    text: str,
+    command: str | None = None,
+    message_id: int | None = None,
+    reply_markup: dict | None = None,
+) -> None:
     parameters: dict = {
         "chat_id": chat_id,
         "text": text[:3900],
-        "reply_markup": keyboard(command),
+        "reply_markup": reply_markup if reply_markup is not None else keyboard(command),
         "disable_web_page_preview": True,
     }
     method = "sendMessage"
@@ -292,6 +410,8 @@ def handle_message(token: str, chat_id: int, message: dict) -> None:
             send_view(token, chat_id, run_status(view), view)
         return
     command = match.group(1)
+    parts = text.strip().split(maxsplit=1)
+    argument = parts[1].strip() if len(parts) == 2 else ""
     if command in {"start", "menu"}:
         send_view(token, chat_id, menu_text())
     elif command == "help":
@@ -300,6 +420,17 @@ def handle_message(token: str, chat_id: int, message: dict) -> None:
         send_view(token, chat_id, run_status("diagnose-overview"), "diagnose-overview")
     elif command == "history":
         send_view(token, chat_id, run_status("history-24h"), "history-24h")
+    elif command == "maintenance":
+        send_view(token, chat_id, maintenance_text(), "maintenance")
+    elif command == "restart":
+        if not argument:
+            send_view(token, chat_id, restart_list_text(), "restart-list")
+        elif argument in CONTAINER_NAMES:
+            confirmation_token, confirmation_text = prepare_action(f"restart:{argument}")
+            markup = confirmation_keyboard(confirmation_token) if confirmation_token else keyboard("maintenance")
+            send_view(token, chat_id, confirmation_text, reply_markup=markup)
+        else:
+            send_view(token, chat_id, "🔴 Unbekannter Container. Wähle einen Eintrag aus der Liste.", "restart-list")
     elif command in STATUS_COMMANDS:
         send_view(token, chat_id, run_status(command), command)
     else:
@@ -319,6 +450,34 @@ def handle_callback(token: str, chat_id: int, callback: dict) -> None:
     data = callback.get("data")
     if data == "menu":
         send_view(token, chat_id, menu_text(), message_id=message["message_id"])
+        return
+    if data == "maintenance":
+        send_view(token, chat_id, maintenance_text(), "maintenance", message["message_id"])
+        return
+    if data == "restart:list":
+        send_view(token, chat_id, restart_list_text(), "restart-list", message["message_id"])
+        return
+    if isinstance(data, str) and data.startswith("act:prepare:"):
+        action = data.removeprefix("act:prepare:")
+        confirmation_token, confirmation_text = prepare_action(action)
+        markup = confirmation_keyboard(confirmation_token) if confirmation_token else keyboard("maintenance")
+        send_view(
+            token,
+            chat_id,
+            confirmation_text,
+            message_id=message["message_id"],
+            reply_markup=markup,
+        )
+        return
+    if isinstance(data, str) and data.startswith("act:confirm:"):
+        confirmation_token = data.removeprefix("act:confirm:")
+        result = finish_action("confirm", confirmation_token)
+        send_view(token, chat_id, result, "action-result", message["message_id"])
+        return
+    if isinstance(data, str) and data.startswith("act:cancel:"):
+        confirmation_token = data.removeprefix("act:cancel:")
+        result = finish_action("cancel", confirmation_token)
+        send_view(token, chat_id, result, "maintenance", message["message_id"])
         return
     if isinstance(data, str) and data.startswith("show:"):
         command = data[5:]

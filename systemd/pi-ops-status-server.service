@@ -1,5 +1,5 @@
 [Unit]
-Description=Local read-only Raspberry Pi status service
+Description=Local Raspberry Pi status and confirmed maintenance service
 After=docker.service
 Wants=docker.service
 
