@@ -37,11 +37,17 @@ Docker liefert auf diesem Host derzeit keine nutzbaren Container-RAM-Werte.
 Beim Neuerstellen von Agent Zero meldete Docker außerdem ausdrücklich, dass
 der Kernel Memory-Limits nicht unterstützt beziehungsweise der Controller
 nicht eingehängt ist; das vorhandene `mem_limit: 2g` wurde verworfen.
-Ursache ist der noch laufende Kernel-Parameter `cgroup_disable=memory`. Die
-aktuelle `/boot/firmware/cmdline.txt` enthält ihn nicht mehr und der Kernel ist
-mit `CONFIG_MEMCG=y` gebaut. Der nächste kontrollierte Neustart sollte den
-Memory-Controller daher ohne weitere Konfigurationsänderung aktivieren. Erst
-danach werden Speicherverbrauch und sinnvolle Limits neu bewertet.
+Ursache ist der Kernel-Parameter `cgroup_disable=memory`. Er steht nicht in
+`/boot/firmware/cmdline.txt`, sondern in den von Raspberry Pi ausgelieferten
+Device-Tree-Dateien und wird deshalb beim Boot vorangestellt. Der installierte
+Kernel 6.12.47 besitzt zwar `CONFIG_MEMCG=y`, bietet aber den früher verwendeten
+Gegenparameter `cgroup_enable=memory` nicht mehr. Ein kontrollierter Neustart
+hat bestätigt, dass der Memory-Controller deshalb weiterhin fehlt.
+
+Die Device-Tree-Datei wird nicht lokal gepatcht: Das wäre update-anfällig und
+für die derzeit nur beobachteten RAM-Werte unverhältnismäßig. Memory-Metriken
+und wirksame Container-Limits bleiben bis zu einem unterstützten Kernel-Fix
+beziehungsweise einer gezielt getesteten Kernel-Aktualisierung zurückgestellt.
 
 ## Mosquitto und Zigbee2MQTT
 
@@ -70,9 +76,9 @@ healthy und ohne Neustarts; Home Assistant antwortete mit HTTP 200 und stellte
 die Matter-WebSocket-Verbindung ohne Fehler wieder her.
 
 Agent Zero prüft seinen lokalen HTTP-Endpunkt auf Container-Port 80. Die
-Anwendung benötigt auf dem Raspberry Pi bei einem Kaltstart deutlich länger
-als eine Minute, während sie CPU-intensiv initialisiert. Das Healthcheck-
-Startfenster beträgt deshalb drei Minuten. Datenvolume und OAuth-/Chat-Zustand
+Anwendung benötigt auf dem Raspberry Pi bei einem vollständigen Hoststart rund
+fünf Minuten, während sie CPU-intensiv initialisiert. Das Healthcheck-
+Startfenster beträgt deshalb fünf Minuten. Datenvolume und OAuth-/Chat-Zustand
 blieben unverändert; nach der Initialisierung waren Healthcheck und die nur an
 `127.0.0.1:50080` veröffentlichte Oberfläche healthy beziehungsweise HTTP 200.
 
@@ -119,6 +125,7 @@ Compose den Betriebszustand des Hosts:
 - alle elf erwarteten Container müssen laufen; vorhandene Docker-Healthchecks
   dürfen weder `unhealthy` noch dauerhaft `starting` sein
 - der Borg-Timer muss aktiv und der letzte Backup-Lauf erfolgreich sein
+- Fail2ban muss aktiv sein
 - die Root-Partition darf nicht zu mindestens 85 Prozent belegt sein
 - Home Assistant, Matter und Agent Zero werden über ihre Loopback-Endpunkte
   geprüft
@@ -141,3 +148,17 @@ Die installierten Dateien liegen unter `/usr/local/sbin` beziehungsweise
 `systemd/`. Benachrichtigungen werden separat ergänzt, sobald der gewünschte
 Kanal feststeht. Bis dahin liefert der Monitor lokal eine einheitliche,
 maschinenlesbare Grundlage ohne Zugangsdaten.
+
+## Fail2ban
+
+Nach dem kontrollierten Neustart startete die aktivierte SSH-Jail nicht, weil
+sie das auf diesem System nicht vorhandene `/var/log/auth.log` erwartete. SSH
+protokolliert hier in das systemd-Journal. Die lokale Konfiguration
+`config/fail2ban/sshd-systemd.local` setzt deshalb für die SSH-Jail
+`backend = systemd`; installiert ist sie unter
+`/etc/fail2ban/jail.d/sshd-systemd.local`.
+
+`fail2ban-client -t` war danach erfolgreich, der Dienst meldete `Server ready`
+und die SSH-Jail war aktiv. Die Meldung zum nicht explizit gesetzten
+`allowipv6` verwendet Fail2bans dokumentierten Standardwert `auto` und ist kein
+Startfehler.

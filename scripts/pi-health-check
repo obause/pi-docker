@@ -71,6 +71,10 @@ if ! systemctl is-active --quiet pi-borg-backup.timer; then
     fail 'pi-borg-backup.timer is not active'
 fi
 
+if ! systemctl is-active --quiet fail2ban.service; then
+    fail 'fail2ban.service is not active'
+fi
+
 backup_result=$(systemctl show pi-borg-backup.service --property Result --value)
 if [[ $backup_result != success ]]; then
     fail "last Borg backup result is $backup_result"
@@ -94,5 +98,5 @@ if (( failures > 0 )); then
     exit 1
 fi
 
-printf 'OK containers=%d root_used=%s%% backup=%s endpoints=7\n' \
+printf 'OK containers=%d root_used=%s%% backup=%s fail2ban=active endpoints=7\n' \
     "${#expected_containers[@]}" "$root_used" "$backup_result"
