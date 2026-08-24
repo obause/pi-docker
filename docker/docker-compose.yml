@@ -172,7 +172,6 @@ services:
       retries: 3
       start_period: 90s
     network_mode: host
-    privileged: true
     cap_add:
       - NET_ADMIN
       - NET_RAW

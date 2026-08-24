@@ -86,3 +86,21 @@ Portainer-Binary bietet keinen erfolgreichen eingebauten Healthcheck. Portainer
 wird deshalb später über das Host-Monitoring seines HTTPS-Endpunkts geprüft.
 Für Govee2MQTT und Cloudflare-DDNS wird ebenfalls kein künstlicher reiner
 Prozesscheck ergänzt; ihre Funktionsprüfung gehört in das externe Monitoring.
+
+## Privilegien
+
+Home Assistant verwendet die Bluetooth-Integration und sieht einen lokalen
+Bluetooth-Controller. `privileged: true` wurde dennoch entfernt, weil D-Bus
+sowie die von Home Assistant für vollständige Bluetooth-Verwaltung geforderten
+Capabilities `NET_ADMIN` und `NET_RAW` bereits gezielt vorhanden sind.
+
+Nach der Neuerstellung war Home Assistant healthy und HTTP 200. Der gleiche
+Bluetooth-Controller blieb sichtbar, `bluetoothctl show` funktionierte, Matter
+verband sich wieder und es traten keine Bluetooth-Berechtigungs- oder
+kritischen Fehler auf.
+
+Matter behält `apparmor=unconfined`, da dies Teil der offiziellen
+Container-Empfehlung für Bluetooth-Kommissionierung ist. Portainer behält den
+direkten Docker-Socket, weil er als vollständige lokale Docker-Verwaltung
+eingesetzt wird. Der Zugriff ist damit bewusst administrativ und nicht
+Least-Privilege.
