@@ -1,0 +1,25 @@
+[Unit]
+Description=Agent Zero host gateway for Raspberry Pi
+Documentation=https://github.com/agent0ai/a0-connector
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=simple
+User=obause
+Group=obause
+WorkingDirectory=/home/obause/pi-docker
+Environment=HOME=/home/obause
+Environment=PATH=/home/obause/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/usr/bin/test -x /home/obause/.local/bin/a0
+ExecStartPre=/usr/bin/test -d /home/obause/pi-docker
+ExecStart=/usr/local/libexec/a0-host-gateway
+RuntimeDirectory=a0-host-gateway
+RuntimeDirectoryMode=0700
+Restart=always
+RestartSec=5s
+TimeoutStopSec=20s
+UMask=0027
+
+[Install]
+WantedBy=multi-user.target

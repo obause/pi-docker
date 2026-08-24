@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+control_fifo=/run/a0-host-gateway/control
+
+if [ ! -e "$control_fifo" ]; then
+    mkfifo -m 0600 "$control_fifo"
+fi
+if [ ! -p "$control_fifo" ]; then
+    echo "A0 gateway control path is not a FIFO: $control_fifo" >&2
+    exit 1
+fi
+
+# The gateway treats stdin EOF as a launcher shutdown. Opening the private FIFO
+# read/write keeps stdin alive while preserving its documented JSONL control
+# channel for local administration.
+exec 3<>"$control_fifo"
+exec /home/obause/.local/bin/a0 gateway \
+    --host http://127.0.0.1:50080 \
+    --workspace /home/obause/pi-docker \
+    --gateway-id raspberry-pi \
+    --host-label Raspberry-Pi \
+    --master \
+    --scopes file_read,file_write,code_execution <&3

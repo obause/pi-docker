@@ -1,4 +1,4 @@
-# Telegram Operations Bot – Phase A bis C
+# Telegram Operations Bot und Agent-Zugriff – Phase A bis D
 
 Stand: 24. August 2026
 
@@ -121,3 +121,53 @@ sudo systemctl restart pi-ops-bot.service
 
 Im Journal stehen nur allgemeine Verbindungs- und Verarbeitungsfehler. Token,
 Chat-ID und Benutzer-ID werden nicht protokolliert.
+
+## Phase D: Agent Zero mit Host-Gateway
+
+Für freie, natürlichsprachliche Administrationsaufgaben verwendet Agent Zero
+seine eigene Telegram-Integration. Der Operations Bot aus Phase A bis C bleibt
+der deterministische Kanal für Status, Diagnose und bestätigte Standardaktionen;
+der Agent-Zero-Bot ist der bewusst leistungsfähigere Kanal für individuelle
+Analyse- und Änderungsaufgaben.
+
+Auf dem Raspberry Pi läuft der offizielle A0 Connector als
+`a0-host-gateway.service`. Er verbindet sich ausschließlich mit der lokal auf
+`127.0.0.1:50080` veröffentlichten Agent-Zero-Instanz. Als primärer Arbeitsordner
+ist `/home/obause/pi-docker` gesetzt. Freigegeben sind:
+
+- Dateien lesen
+- Dateien schreiben
+- Befehle auf dem Host ausführen
+
+Browser- und Computersteuerung sind deaktiviert. Das Gateway startet als
+Benutzer `obause`; dessen bewusst vorhandene passwortlose Sudo-Berechtigung
+ermöglicht Agent Zero vollständigen Hostzugriff. Das ist keine Sandbox-Grenze:
+Eine bestätigte Agentenaufgabe kann Docker, systemd, Pakete und Dateien außerhalb
+des Repositories verändern. Die Sicherheit beruht deshalb auf dem privaten
+Telegram-Bot, dessen Benutzer-Allowlist, der Kontrolle der Aufgaben und der
+Nachvollziehbarkeit in Agent Zero.
+
+Der Gateway-Modus ist nicht an einen einzelnen Chat gebunden. Dadurch können
+auch von Telegram erzeugte Agent-Zero-Kontexte dieselben Host-Werkzeuge nutzen.
+Fortschritt, Werkzeugaufrufe, Warteschlange und Abbruch laufen nativ über die
+Agent-Zero-Telegram-Integration; ein zusätzlicher API-Token-Bridge-Dienst ist
+nicht erforderlich.
+
+Da der Gateway-Prozess ein EOF auf stdin als reguläres Launcher-Ende behandelt,
+hält die Startdatei einen privaten FIFO unter
+`/run/a0-host-gateway/control` offen. Der Pfad ist nur für `obause` zugänglich
+und verhindert die sonst bei systemd sofort eintretende Neustartschleife. Er
+bleibt zugleich der vom Connector vorgesehene lokale JSONL-Steuerkanal.
+
+### Betrieb des Host-Gateways
+
+```sh
+systemctl status a0-host-gateway.service
+journalctl -u a0-host-gateway.service -n 50 --no-pager
+sudo systemctl restart a0-host-gateway.service
+/home/obause/.local/bin/a0 --version
+```
+
+Der Dienst enthält keine Telegram- oder Agent-Zero-Tokens. Updates des A0
+Connectors werden bewusst nicht automatisch installiert und müssen nach
+Prüfung des offiziellen Installers manuell erfolgen.
