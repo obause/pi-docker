@@ -179,6 +179,12 @@ services:
     image: eclipse-mosquitto:2
     container_name: mosquitto
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q ':075B ' /proc/net/tcp /proc/net/tcp6"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     networks: [iot]
     volumes:
       - mosquitto_data:/mosquitto/data
@@ -194,7 +200,19 @@ services:
     image: koenkk/zigbee2mqtt:latest
     container_name: zigbee2mqtt
     restart: unless-stopped
-    depends_on: [mosquitto]
+    depends_on:
+      mosquitto:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "const http=require('http');const req=http.get('http://127.0.0.1:8080/',res=>process.exit(res.statusCode<500?0:1));req.on('error',()=>process.exit(1));req.setTimeout(3000,()=>{req.destroy();process.exit(1)});"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
     networks: [iot, proxy]
     volumes:
       - /srv/pi-docker/zigbee2mqtt/data:/app/data

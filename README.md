@@ -10,6 +10,7 @@ Die Trennung ist auf dem Host umgesetzt und die betreffenden Dateien sind aus de
 - [Docker- und Host-Logging](docs/operations/logging.md)
 - [Phase-1-Änderungsbericht](docs/operations/phase-1.md)
 - [Phase 2: Secrets und Laufzeitdaten](docs/operations/phase-2.md)
+- [Phase 3: Zuverlässigkeit und Wartbarkeit](docs/operations/phase-3.md)
 
 ## Wichtige Befehle
 
