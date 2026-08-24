@@ -1,0 +1,38 @@
+[Unit]
+Description=Private read-only Telegram operations bot
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi-ops-bot
+Group=pi-ops-bot
+ExecStart=/usr/local/libexec/pi-ops-bot %d/telegram-health.json /var/lib/pi-ops-bot/offset
+LoadCredential=telegram-health.json:/etc/pi-docker/secrets/telegram-health.json
+StateDirectory=pi-ops-bot
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5s
+UMask=0077
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ProtectProc=invisible
+LockPersonality=true
+MemoryDenyWriteExecute=true
+RemoveIPC=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+CapabilityBoundingSet=CAP_SETUID CAP_SETGID CAP_AUDIT_WRITE
+KeyringMode=private
+
+[Install]
+WantedBy=multi-user.target

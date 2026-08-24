@@ -1,0 +1,232 @@
+#!/usr/bin/env bash
+set -u
+
+expected_containers=(
+    agent-zero
+    docker-socket-proxy-1
+    dyndns
+    govee2mqtt
+    homeassistant
+    matter-server
+    mosquitto
+    pihole
+    portainer
+    traefik
+    zigbee2mqtt
+)
+
+human_duration() {
+    local seconds=${1:-0}
+    local days hours minutes
+    days=$((seconds / 86400))
+    hours=$(((seconds % 86400) / 3600))
+    minutes=$(((seconds % 3600) / 60))
+    if (( days > 0 )); then
+        printf '%d T %d Std' "$days" "$hours"
+    elif (( hours > 0 )); then
+        printf '%d Std %d Min' "$hours" "$minutes"
+    else
+        printf '%d Min' "$minutes"
+    fi
+}
+
+container_counts() {
+    local running=0 healthy=0 unhealthy=0 missing=0 name state health
+    for name in "${expected_containers[@]}"; do
+        state=$(docker inspect --format '{{.State.Status}}' "$name" 2>/dev/null) || {
+            missing=$((missing + 1))
+            continue
+        }
+        [[ $state == running ]] && running=$((running + 1))
+        health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$name" 2>/dev/null || printf 'unknown')
+        [[ $health == healthy ]] && healthy=$((healthy + 1))
+        [[ $health == unhealthy ]] && unhealthy=$((unhealthy + 1))
+    done
+    printf '%s %s %s %s\n' "$running" "$healthy" "$unhealthy" "$missing"
+}
+
+zigbee_values() {
+    local snapshot response_time process_uptime mqtt_connected device_count active_devices total_messages
+    local now previous_response previous_uptime previous_total last_progress quiet_time snapshot_age restarts
+    now=$(date +%s)
+    snapshot=$(docker exec zigbee2mqtt node /app/zigbee-health-snapshot.cjs 2>/dev/null) || return 1
+    [[ $snapshot =~ ^[0-9]+\ [0-9]+\ [01]\ [0-9]+\ [0-9]+\ [0-9]+$ ]] || return 1
+    read -r response_time process_uptime mqtt_connected device_count active_devices total_messages <<< "$snapshot"
+    last_progress=$response_time
+    if [[ -r /var/lib/pi-health-monitor/zigbee-traffic.state ]]; then
+        read -r previous_response previous_uptime previous_total last_progress < /var/lib/pi-health-monitor/zigbee-traffic.state || last_progress=$response_time
+        if (( process_uptime < previous_uptime || total_messages < previous_total || total_messages > previous_total )); then
+            last_progress=$response_time
+        fi
+    fi
+    quiet_time=$((response_time - last_progress))
+    (( quiet_time < 0 )) && quiet_time=0
+    snapshot_age=$((now - response_time))
+    (( snapshot_age < 0 )) && snapshot_age=0
+    restarts=$(docker inspect --format '{{.RestartCount}}' zigbee2mqtt 2>/dev/null || printf '?')
+    printf '%s %s %s %s %s %s\n' "$mqtt_connected" "$device_count" "$active_devices" "$quiet_time" "$snapshot_age" "$restarts"
+}
+
+backup_values() {
+    local result started next
+    result=$(systemctl show pi-borg-backup.service --property=Result --value 2>/dev/null || printf 'unknown')
+    started=$(journalctl -u pi-borg-backup.service -t systemd \
+        -g '^Starting pi-borg-backup.service' -n 1 --no-pager -o short-iso 2>/dev/null \
+        | awk 'NR == 1 {print $1}')
+    next=$(systemctl show pi-borg-backup.timer --property=NextElapseUSecRealtime --value 2>/dev/null || true)
+    printf '%s\n%s\n%s\n' "${result:-unknown}" "${started:-unbekannt}" "${next:-unbekannt}"
+}
+
+host_values() {
+    local uptime_seconds root_used total_kib available_kib memory_percent temp throttled failed load
+    uptime_seconds=${SECONDS:-0}
+    uptime_seconds=${uptime_seconds%%.*}
+    [[ -r /proc/uptime ]] && read -r uptime_seconds _ < /proc/uptime
+    uptime_seconds=${uptime_seconds%%.*}
+    root_used=$(df --output=pcent / | tail -n 1 | tr -cd '0-9')
+    total_kib=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+    available_kib=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+    memory_percent=$((100 - (available_kib * 100 / total_kib)))
+    temp=$(vcgencmd measure_temp 2>/dev/null | sed -n "s/^temp=\([^']*\).*/\1/p")
+    throttled=$(vcgencmd get_throttled 2>/dev/null | sed -n 's/^throttled=//p')
+    failed=$(systemctl --failed --no-legend --no-pager 2>/dev/null | awk 'NF {count++} END {print count+0}')
+    read -r load _ < /proc/loadavg
+    printf '%s\n%s\n%s\n%s\n%s\n%s\n%s\n' \
+        "$(human_duration "$uptime_seconds")" "${root_used:-?}" "$memory_percent" \
+        "${temp:-?}" "${throttled:-unknown}" "$failed" "$load"
+}
+
+show_status() {
+    local running healthy unhealthy missing monitor backup_result zigbee mqtt devices active quiet age restarts
+    local uptime root_used memory temp throttled failed load overall overall_icon
+    read -r running healthy unhealthy missing < <(container_counts)
+    monitor=$(systemctl show pi-health-check.service --property=Result --value 2>/dev/null || printf 'unknown')
+    backup_result=$(systemctl show pi-borg-backup.service --property=Result --value 2>/dev/null || printf 'unknown')
+    if zigbee=$(zigbee_values); then
+        read -r mqtt devices active quiet age restarts <<< "$zigbee"
+    else
+        mqtt=0 devices='?' active='?' quiet='?' age='?' restarts='?'
+    fi
+    mapfile -t host < <(host_values)
+    uptime=${host[0]}; root_used=${host[1]}; memory=${host[2]}; temp=${host[3]}; throttled=${host[4]}; failed=${host[5]}; load=${host[6]}
+
+    overall='gesund'; overall_icon='🟢'
+    if [[ $monitor != success || $running -ne ${#expected_containers[@]} || $unhealthy -gt 0 || $backup_result != success || $mqtt != 1 ]]; then
+        overall='Prüfung erforderlich'; overall_icon='🔴'
+    fi
+
+    printf '%s Raspberry Pi: %s\n\n' "$overall_icon" "$overall"
+    printf 'Container: %s/%s aktiv, %s mit Healthcheck gesund\n' "$running" "${#expected_containers[@]}" "$healthy"
+    if [[ $mqtt == 1 ]]; then
+        printf 'Zigbee: Funkdaten verfügbar, %s Geräte (%s aktiv)\n' "$devices" "$active"
+    else
+        printf 'Zigbee: Status nicht verfügbar\n'
+    fi
+    if [[ $backup_result == success ]]; then
+        printf 'Backup: erfolgreich\n'
+    else
+        printf 'Backup: %s\n' "$backup_result"
+    fi
+    printf 'Speicher: %s%% belegt · RAM: %s%% belegt\n' "$root_used" "$memory"
+    printf 'CPU: %s °C · Last: %s\n' "$temp" "$load"
+    printf 'Uptime: %s\n' "$uptime"
+}
+
+show_containers() {
+    local name state health icon status
+    printf '🐳 Container (%s erwartet)\n\n' "${#expected_containers[@]}"
+    for name in "${expected_containers[@]}"; do
+        state=$(docker inspect --format '{{.State.Status}}' "$name" 2>/dev/null) || state=missing
+        health=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}kein Healthcheck{{end}}' "$name" 2>/dev/null || true)
+        icon='🟢'
+        [[ $state != running || $health == unhealthy ]] && icon='🔴'
+        [[ $health == starting ]] && icon='🟡'
+        status=$state
+        [[ $health != 'kein Healthcheck' && -n $health ]] && status="$status, $health"
+        printf '%s %s — %s\n' "$icon" "$name" "$status"
+    done
+}
+
+show_zigbee() {
+    local values mqtt devices active quiet age restarts container_status
+    printf '📡 Zigbee-Koordinator\n\n'
+    container_status=$(docker inspect --format '{{.State.Status}}{{if .State.Health}} / {{.State.Health.Status}}{{end}}' zigbee2mqtt 2>/dev/null || printf 'nicht verfügbar')
+    printf 'Zigbee2MQTT: %s\n' "$container_status"
+    if values=$(zigbee_values); then
+        read -r mqtt devices active quiet age restarts <<< "$values"
+        [[ $mqtt == 1 ]] && printf 'MQTT: verbunden\n' || printf 'MQTT: getrennt\n'
+        printf 'Erfasste Geräte: %s · zuletzt aktiv: %s\n' "$devices" "$active"
+        printf 'Funkzähler zuletzt fortgeschritten: vor %s\n' "$(human_duration "$quiet")"
+        printf 'Snapshot-Alter: %s s\n' "$age"
+        printf 'Container-Neustarts: %s\n' "$restarts"
+        if (( mqtt == 1 && quiet < 1200 && age < 900 )); then
+            printf '\n🟢 Funkpfad wirkt aktiv.\n'
+        else
+            printf '\n🔴 Funkpfad benötigt Prüfung.\n'
+        fi
+    else
+        printf '🔴 Aggregierter Funkstatus ist nicht verfügbar.\n'
+    fi
+}
+
+show_backup() {
+    local values result started next timer result_text timer_text
+    mapfile -t values < <(backup_values)
+    result=${values[0]}; started=${values[1]}; next=${values[2]}
+    timer=$(systemctl is-active pi-borg-backup.timer 2>/dev/null || true)
+    result_text=$result
+    [[ $result == success ]] && result_text='erfolgreich'
+    timer_text=$timer
+    [[ $timer == active ]] && timer_text='aktiv'
+    printf '💾 Borg-Backup\n\n'
+    printf 'Timer: %s\n' "${timer_text:-unbekannt}"
+    printf 'Letztes Ergebnis: %s\n' "$result_text"
+    printf 'Letzter Start: %s\n' "$started"
+    printf 'Nächster Lauf: %s\n' "$next"
+}
+
+show_host() {
+    local values uptime root_used memory temp throttled failed load throttle_text
+    mapfile -t values < <(host_values)
+    uptime=${values[0]}; root_used=${values[1]}; memory=${values[2]}; temp=${values[3]}; throttled=${values[4]}; failed=${values[5]}; load=${values[6]}
+    throttle_text='nein'
+    [[ $throttled != 0x0 ]] && throttle_text="ja ($throttled)"
+    printf '🖥️ Raspberry-Pi-Host\n\n'
+    printf 'Uptime: %s\n' "$uptime"
+    printf 'CPU-Temperatur: %s °C\n' "$temp"
+    printf 'Systemlast (1 Min): %s\n' "$load"
+    printf 'RAM belegt: %s%%\n' "$memory"
+    printf 'Root-Dateisystem belegt: %s%%\n' "$root_used"
+    printf 'Unterspannung/Drosselung: %s\n' "$throttle_text"
+    printf 'Fehlgeschlagene systemd-Units: %s\n' "$failed"
+    printf '\nHinweis: Container-RAM ist wegen des deaktivierten cgroup-Memory-Controllers nicht verfügbar.\n'
+}
+
+show_alerts() {
+    local result lines
+    result=$(systemctl show pi-health-check.service --property=Result --value 2>/dev/null || printf 'unknown')
+    printf '🔔 Aktuelle Warnungen\n\n'
+    if [[ $result == success ]]; then
+        printf '🟢 Keine aktiven Warnungen des Health-Monitors.\n'
+        return
+    fi
+    printf '🔴 Der letzte Health-Check endete mit: %s\n' "$result"
+    lines=$(journalctl -u pi-health-check.service -n 80 --no-pager -o cat 2>/dev/null \
+        | awk '/^(ERROR|FAILED) / {line[++count]=$0} END {start=count-4; if (start<1) start=1; for (i=start;i<=count;i++) print line[i]}' \
+        | tr -cd '[:alnum:][:space:]_.:%()=,+/-')
+    if [[ -n $lines ]]; then
+        printf '\n%s\n' "$lines"
+    else
+        printf '\nKeine sichere Detailmeldung verfügbar.\n'
+    fi
+}
+
+case ${1:-} in
+    status) show_status ;;
+    containers) show_containers ;;
+    zigbee) show_zigbee ;;
+    backup) show_backup ;;
+    host) show_host ;;
+    alerts) show_alerts ;;
+    *) printf 'Unsupported status command\n' >&2; exit 2 ;;
+esac

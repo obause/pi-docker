@@ -1,0 +1,311 @@
+#!/usr/bin/env python3
+"""Private, read-only Telegram operations bot for the Raspberry Pi."""
+
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+import re
+import subprocess
+import sys
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
+COMMAND_PATTERN = re.compile(r"^/([a-z]+)(?:@[A-Za-z0-9_]+)?(?:\s|$)")
+STATUS_COMMANDS = {"status", "zigbee", "containers", "backup", "host", "alerts"}
+COMMAND_DESCRIPTIONS = [
+    ("status", "Gesamtstatus anzeigen"),
+    ("zigbee", "Zigbee-Funkpfad prüfen"),
+    ("containers", "Containerstatus anzeigen"),
+    ("backup", "Backupstatus anzeigen"),
+    ("host", "Hostzustand anzeigen"),
+    ("alerts", "Aktuelle Warnungen anzeigen"),
+    ("help", "Hilfe und Befehle"),
+]
+
+
+class TelegramError(RuntimeError):
+    pass
+
+
+def api_request(token: str, method: str, parameters: dict | None = None, timeout: int = 20):
+    encoded: dict[str, str] = {}
+    for key, value in (parameters or {}).items():
+        encoded[key] = json.dumps(value, separators=(",", ":")) if isinstance(value, (dict, list)) else str(value)
+    request = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/{method}",
+        data=urllib.parse.urlencode(encoded).encode("utf-8"),
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            payload = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise TelegramError(f"Telegram HTTP {error.code}") from None
+    except (urllib.error.URLError, TimeoutError, OSError):
+        raise TelegramError("Telegram nicht erreichbar") from None
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise TelegramError("Ungültige Telegram-Antwort") from None
+    if not isinstance(payload, dict) or payload.get("ok") is not True:
+        raise TelegramError("Telegram-Anfrage abgelehnt")
+    return payload.get("result")
+
+
+def load_config(path: Path) -> tuple[str, int, int]:
+    try:
+        config = json.loads(path.read_text(encoding="utf-8"))
+        token = config["bot_token"]
+        chat_id = int(config["chat_id"])
+        user_id = int(config.get("user_id", chat_id))
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        raise RuntimeError("Telegram-Credential ist ungültig") from None
+    if not isinstance(token, str) or not TOKEN_PATTERN.fullmatch(token):
+        raise RuntimeError("Telegram-Credential ist ungültig")
+    if chat_id <= 0 or user_id <= 0:
+        raise RuntimeError("Nur ein privater Telegram-Chat ist erlaubt")
+    return token, chat_id, user_id
+
+
+def keyboard(command: str | None = None) -> dict:
+    rows = [
+        [
+            {"text": "📊 Status", "callback_data": "show:status"},
+            {"text": "📡 Zigbee", "callback_data": "show:zigbee"},
+        ],
+        [
+            {"text": "🐳 Container", "callback_data": "show:containers"},
+            {"text": "💾 Backup", "callback_data": "show:backup"},
+        ],
+        [
+            {"text": "🖥️ Host", "callback_data": "show:host"},
+            {"text": "🔔 Warnungen", "callback_data": "show:alerts"},
+        ],
+    ]
+    if command in STATUS_COMMANDS:
+        rows.append([
+            {"text": "↻ Aktualisieren", "callback_data": f"show:{command}"},
+            {"text": "☰ Menü", "callback_data": "menu"},
+        ])
+    return {"inline_keyboard": rows}
+
+
+def menu_text() -> str:
+    return (
+        "🤖 Raspberry-Pi Operations Bot\n\n"
+        "Phase A ist rein lesend: Ich zeige sichere, zusammengefasste Statusdaten. "
+        "Ich kann keine Container neu starten, Konfigurationen ändern oder Backups auslösen.\n\n"
+        "Wähle einen Bereich oder sende /help."
+    )
+
+
+def help_text() -> str:
+    commands = "\n".join(f"/{command} — {description}" for command, description in COMMAND_DESCRIPTIONS)
+    return f"ℹ️ Verfügbare Befehle\n\n{commands}\n\nNormale Textnachrichten öffnen diese Hilfe."
+
+
+def run_status(command: str) -> str:
+    if command not in STATUS_COMMANDS:
+        return help_text()
+    try:
+        result = subprocess.run(
+            ["/usr/bin/sudo", "-n", "/usr/local/sbin/pi-ops-status", command],
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=25,
+            env={"PATH": "/usr/sbin:/usr/bin:/sbin:/bin", "LANG": "C.UTF-8"},
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "🔴 Statusabfrage ist momentan nicht verfügbar."
+    output = result.stdout.strip()
+    if result.returncode != 0 or not output:
+        return "🔴 Statusabfrage ist momentan nicht verfügbar."
+    return output[:3900]
+
+
+def save_offset(path: Path, offset: int) -> None:
+    descriptor, temporary = tempfile.mkstemp(prefix=".offset.", dir=path.parent)
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="ascii") as stream:
+            stream.write(f"{offset}\n")
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
+def load_offset(path: Path) -> int:
+    try:
+        return max(0, int(path.read_text(encoding="ascii").strip()))
+    except (OSError, ValueError):
+        return 0
+
+
+def authorized_message(message: object, chat_id: int, user_id: int) -> bool:
+    if not isinstance(message, dict):
+        return False
+    chat = message.get("chat")
+    sender = message.get("from")
+    return (
+        isinstance(chat, dict)
+        and chat.get("type") == "private"
+        and chat.get("id") == chat_id
+        and isinstance(sender, dict)
+        and sender.get("id") == user_id
+    )
+
+
+def authorized_callback(callback: object, chat_id: int, user_id: int) -> bool:
+    if not isinstance(callback, dict):
+        return False
+    sender = callback.get("from")
+    message = callback.get("message")
+    chat = message.get("chat") if isinstance(message, dict) else None
+    return (
+        isinstance(sender, dict)
+        and sender.get("id") == user_id
+        and isinstance(chat, dict)
+        and chat.get("type") == "private"
+        and chat.get("id") == chat_id
+    )
+
+
+def send_view(token: str, chat_id: int, text: str, command: str | None = None, message_id: int | None = None) -> None:
+    parameters: dict = {
+        "chat_id": chat_id,
+        "text": text[:3900],
+        "reply_markup": keyboard(command),
+        "disable_web_page_preview": True,
+    }
+    method = "sendMessage"
+    if message_id is not None:
+        method = "editMessageText"
+        parameters["message_id"] = message_id
+    try:
+        api_request(token, method, parameters)
+    except TelegramError:
+        if message_id is None:
+            raise
+
+
+def handle_message(token: str, chat_id: int, message: dict) -> None:
+    text = message.get("text")
+    if not isinstance(text, str):
+        send_view(token, chat_id, help_text())
+        return
+    match = COMMAND_PATTERN.match(text.strip())
+    if not match:
+        send_view(token, chat_id, help_text())
+        return
+    command = match.group(1)
+    if command in {"start", "menu"}:
+        send_view(token, chat_id, menu_text())
+    elif command == "help":
+        send_view(token, chat_id, help_text())
+    elif command in STATUS_COMMANDS:
+        send_view(token, chat_id, run_status(command), command)
+    else:
+        send_view(token, chat_id, help_text())
+
+
+def handle_callback(token: str, chat_id: int, callback: dict) -> None:
+    callback_id = callback.get("id")
+    if isinstance(callback_id, str):
+        try:
+            api_request(token, "answerCallbackQuery", {"callback_query_id": callback_id})
+        except TelegramError:
+            pass
+    message = callback.get("message")
+    if not isinstance(message, dict) or not isinstance(message.get("message_id"), int):
+        return
+    data = callback.get("data")
+    if data == "menu":
+        send_view(token, chat_id, menu_text(), message_id=message["message_id"])
+        return
+    if isinstance(data, str) and data.startswith("show:"):
+        command = data[5:]
+        if command in STATUS_COMMANDS:
+            send_view(token, chat_id, run_status(command), command, message["message_id"])
+
+
+def configure_commands(token: str, chat_id: int) -> None:
+    api_request(
+        token,
+        "setMyCommands",
+        {
+            "commands": [{"command": command, "description": description} for command, description in COMMAND_DESCRIPTIONS],
+            "scope": {"type": "chat", "chat_id": chat_id},
+            "language_code": "de",
+        },
+    )
+
+
+def main() -> int:
+    if len(sys.argv) != 3:
+        print("usage: pi-ops-bot CREDENTIAL OFFSET", file=sys.stderr)
+        return 2
+    credential_path = Path(sys.argv[1])
+    offset_path = Path(sys.argv[2])
+    try:
+        token, chat_id, user_id = load_config(credential_path)
+        configure_commands(token, chat_id)
+    except (RuntimeError, TelegramError) as error:
+        print(f"Start fehlgeschlagen: {error}", file=sys.stderr)
+        return 1
+
+    offset = load_offset(offset_path)
+    last_action = 0.0
+    print("Telegram Operations Bot gestartet", flush=True)
+    while True:
+        try:
+            updates = api_request(
+                token,
+                "getUpdates",
+                {"offset": offset, "timeout": 50, "limit": 20, "allowed_updates": ["message", "callback_query"]},
+                timeout=65,
+            )
+        except TelegramError as error:
+            print(f"Polling fehlgeschlagen: {error}", file=sys.stderr, flush=True)
+            time.sleep(5)
+            continue
+        if not isinstance(updates, list):
+            time.sleep(2)
+            continue
+        for update in updates:
+            if not isinstance(update, dict) or not isinstance(update.get("update_id"), int):
+                continue
+            offset = max(offset, update["update_id"] + 1)
+            save_offset(offset_path, offset)
+            message = update.get("message")
+            callback = update.get("callback_query")
+            if authorized_message(message, chat_id, user_id):
+                delay = 0.8 - (time.monotonic() - last_action)
+                if delay > 0:
+                    time.sleep(delay)
+                try:
+                    handle_message(token, chat_id, message)
+                except TelegramError as error:
+                    print(f"Antwort fehlgeschlagen: {error}", file=sys.stderr, flush=True)
+                last_action = time.monotonic()
+                continue
+            if authorized_callback(callback, chat_id, user_id):
+                delay = 0.8 - (time.monotonic() - last_action)
+                if delay > 0:
+                    time.sleep(delay)
+                handle_callback(token, chat_id, callback)
+                last_action = time.monotonic()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,0 +1,4 @@
+Defaults:pi-ops-bot env_reset
+Defaults:pi-ops-bot secure_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Cmnd_Alias PI_OPS_READONLY = /usr/local/sbin/pi-ops-status status, /usr/local/sbin/pi-ops-status zigbee, /usr/local/sbin/pi-ops-status containers, /usr/local/sbin/pi-ops-status backup, /usr/local/sbin/pi-ops-status host, /usr/local/sbin/pi-ops-status alerts
+pi-ops-bot ALL=(root) NOPASSWD: PI_OPS_READONLY
