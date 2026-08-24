@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -u
+
+state_dir=/var/lib/pi-health-monitor
+state_file=$state_dir/state
+
+output=$(/usr/local/sbin/pi-health-check 2>&1)
+check_result=$?
+printf '%s\n' "$output"
+
+if (( check_result == 0 )); then
+    current_state=healthy
+else
+    current_state=failed
+fi
+
+previous_state=unknown
+if [[ -r $state_file ]]; then
+    read -r previous_state < "$state_file" || previous_state=unknown
+fi
+
+notify=true
+message=
+if [[ $current_state == failed && $previous_state != failed ]]; then
+    message=$(printf '🔴 Raspberry Pi health check failed\nHost: %s\nTime: %s\n\n%s' \
+        "$(hostname)" "$(date --iso-8601=seconds)" "${output:0:3000}")
+elif [[ $current_state == healthy && $previous_state == failed ]]; then
+    message=$(printf '🟢 Raspberry Pi health recovered\nHost: %s\nTime: %s\n\n%s' \
+        "$(hostname)" "$(date --iso-8601=seconds)" "${output:0:3000}")
+else
+    notify=false
+fi
+
+state_may_advance=true
+if [[ $notify == true ]] && /usr/local/sbin/pi-health-telegram configured; then
+    if ! /usr/local/sbin/pi-health-telegram send "$message"; then
+        printf 'WARNING Telegram notification failed; it will be retried\n' >&2
+        state_may_advance=false
+    fi
+fi
+
+if [[ $state_may_advance == true && $current_state != "$previous_state" ]]; then
+    umask 027
+    state_tmp=$(mktemp "$state_dir/.state.XXXXXX")
+    printf '%s\n' "$current_state" > "$state_tmp"
+    mv "$state_tmp" "$state_file"
+fi
+
+exit "$check_result"

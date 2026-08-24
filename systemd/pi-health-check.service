@@ -5,8 +5,10 @@ Wants=docker.service network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/pi-health-check
+ExecStart=/usr/local/sbin/pi-health-check-run
 User=root
+StateDirectory=pi-health-monitor
+StateDirectoryMode=0750
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict

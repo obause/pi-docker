@@ -162,3 +162,29 @@ protokolliert hier in das systemd-Journal. Die lokale Konfiguration
 und die SSH-Jail war aktiv. Die Meldung zum nicht explizit gesetzten
 `allowipv6` verwendet Fail2bans dokumentierten Standardwert `auto` und ist kein
 Startfehler.
+
+## Telegram-Benachrichtigungen
+
+`scripts/pi-health-check-run` führt den eigentlichen Healthcheck aus und merkt
+sich dessen letzten Zustand unter `/var/lib/pi-health-monitor/state`. Dadurch
+wird nur bei einem Zustandswechsel benachrichtigt: einmal beim ersten Fehler
+und einmal nach der Wiederherstellung. Wiederholte identische Ergebnisse
+erzeugen keine Telegram-Nachrichten.
+
+`scripts/pi-health-telegram` verwendet ausschließlich die offizielle Telegram
+Bot API. Der Bot-Token steht weder im Git-Repository noch in Prozessargumenten.
+Die interaktive Einrichtung speichert Token und private Chat-ID als JSON mit
+Modus `0600` unter `/etc/pi-docker/secrets/telegram-health.json`.
+
+Vor der Einrichtung in Telegram über `@BotFather` mit `/newbot` einen Bot
+erstellen. Danach auf dem Pi ausführen:
+
+```sh
+sudo /usr/local/sbin/pi-health-telegram setup
+```
+
+Der Token wird verdeckt eingegeben. Das Programm fordert anschließend zu einer
+privaten `/start`-Nachricht an den neuen Bot auf, ermittelt daraus die Chat-ID
+und sendet eine Testnachricht. Eine fehlgeschlagene Telegram-Zustellung ändert
+das Ergebnis des Healthchecks nicht; der Zustandswechsel wird beim nächsten
+Timerlauf erneut versucht.

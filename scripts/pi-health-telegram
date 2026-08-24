@@ -1,0 +1,181 @@
+#!/usr/bin/env python3
+"""Configure and send Raspberry Pi health notifications through Telegram."""
+
+from __future__ import annotations
+
+import argparse
+import getpass
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import tempfile
+import urllib.error
+import urllib.parse
+import urllib.request
+
+
+CONFIG_PATH = Path("/etc/pi-docker/secrets/telegram-health.json")
+TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
+
+
+class TelegramError(RuntimeError):
+    """An error safe to display without leaking the bot token."""
+
+
+def api_request(token: str, method: str, parameters: dict[str, str] | None = None):
+    url = f"https://api.telegram.org/bot{token}/{method}"
+    data = urllib.parse.urlencode(parameters or {}).encode("utf-8")
+    request = urllib.request.Request(url, data=data, method="POST")
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            payload = json.load(response)
+    except urllib.error.HTTPError as error:
+        raise TelegramError(f"Telegram API returned HTTP {error.code}") from None
+    except (urllib.error.URLError, TimeoutError):
+        raise TelegramError("Telegram API is not reachable") from None
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        raise TelegramError("Telegram API returned an invalid response") from None
+
+    if not isinstance(payload, dict) or payload.get("ok") is not True:
+        raise TelegramError("Telegram API rejected the request")
+    return payload.get("result")
+
+
+def load_config() -> tuple[str, str]:
+    try:
+        config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+        token = config["bot_token"]
+        chat_id = str(config["chat_id"])
+    except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+        raise TelegramError("Telegram health notifications are not configured") from None
+
+    if not isinstance(token, str) or not TOKEN_PATTERN.fullmatch(token):
+        raise TelegramError("Telegram health notification configuration is invalid")
+    if not re.fullmatch(r"-?[0-9]+", chat_id):
+        raise TelegramError("Telegram chat ID is invalid")
+    return token, chat_id
+
+
+def store_config(token: str, chat_id: str) -> None:
+    CONFIG_PATH.parent.mkdir(mode=0o750, parents=True, exist_ok=True)
+    descriptor, temporary_name = tempfile.mkstemp(
+        prefix=".telegram-health.", dir=CONFIG_PATH.parent
+    )
+    try:
+        os.fchmod(descriptor, 0o600)
+        with os.fdopen(descriptor, "w", encoding="utf-8") as temporary_file:
+            json.dump({"bot_token": token, "chat_id": chat_id}, temporary_file)
+            temporary_file.write("\n")
+        os.replace(temporary_name, CONFIG_PATH)
+    except Exception:
+        try:
+            os.unlink(temporary_name)
+        except OSError:
+            pass
+        raise
+
+
+def find_private_start(updates) -> str | None:
+    if not isinstance(updates, list):
+        return None
+    for update in reversed(updates):
+        if not isinstance(update, dict):
+            continue
+        message = update.get("message")
+        if not isinstance(message, dict) or message.get("text") != "/start":
+            continue
+        chat = message.get("chat")
+        if not isinstance(chat, dict) or chat.get("type") != "private":
+            continue
+        chat_id = chat.get("id")
+        if isinstance(chat_id, int):
+            return str(chat_id)
+    return None
+
+
+def setup() -> int:
+    if os.geteuid() != 0:
+        print("Run setup with sudo.", file=sys.stderr)
+        return 1
+
+    token = getpass.getpass("Telegram bot token (input hidden): ").strip()
+    if not TOKEN_PATTERN.fullmatch(token):
+        print("The bot token format is invalid.", file=sys.stderr)
+        return 1
+
+    try:
+        bot = api_request(token, "getMe")
+        username = bot.get("username") if isinstance(bot, dict) else None
+        if not isinstance(username, str) or not username:
+            raise TelegramError("Telegram bot has no username")
+
+        print(f"Send /start to @{username} in a private Telegram chat, then press Enter.")
+        input()
+        updates = api_request(
+            token,
+            "getUpdates",
+            {"limit": "100", "timeout": "0", "allowed_updates": '["message"]'},
+        )
+        chat_id = find_private_start(updates)
+        if chat_id is None:
+            raise TelegramError("No private /start message was found; send it and retry setup")
+
+        api_request(
+            token,
+            "sendMessage",
+            {
+                "chat_id": chat_id,
+                "text": "✅ Raspberry Pi health notifications are connected.",
+            },
+        )
+        store_config(token, chat_id)
+    except TelegramError as error:
+        print(f"Setup failed: {error}", file=sys.stderr)
+        return 1
+
+    print(f"Configuration stored at {CONFIG_PATH} with mode 0600.")
+    return 0
+
+
+def configured() -> int:
+    try:
+        load_config()
+    except TelegramError:
+        return 1
+    return 0
+
+
+def send(message: str) -> int:
+    try:
+        token, chat_id = load_config()
+        api_request(
+            token,
+            "sendMessage",
+            {"chat_id": chat_id, "text": message[:3900]},
+        )
+    except TelegramError as error:
+        print(f"Telegram notification failed: {error}", file=sys.stderr)
+        return 1
+    return 0
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("setup")
+    subparsers.add_parser("configured")
+    send_parser = subparsers.add_parser("send")
+    send_parser.add_argument("message")
+    arguments = parser.parse_args()
+
+    if arguments.command == "setup":
+        return setup()
+    if arguments.command == "configured":
+        return configured()
+    return send(arguments.message)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
