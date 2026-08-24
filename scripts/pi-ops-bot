@@ -19,9 +19,21 @@ import urllib.request
 TOKEN_PATTERN = re.compile(r"^[0-9]+:[A-Za-z0-9_-]+$")
 COMMAND_PATTERN = re.compile(r"^/([a-z]+)(?:@[A-Za-z0-9_]+)?(?:\s|$)")
 STATUS_COMMANDS = {"status", "zigbee", "containers", "backup", "host", "alerts"}
+DIAGNOSTIC_VIEWS = {
+    "diagnose-overview",
+    "diagnose-zigbee",
+    "diagnose-containers",
+    "diagnose-backup",
+    "diagnose-host",
+}
+HISTORY_VIEWS = {"history-24h", "history-7d"}
+SERVER_COMMANDS = STATUS_COMMANDS | DIAGNOSTIC_VIEWS | HISTORY_VIEWS
 STATUS_SOCKET = "/run/pi-ops-status/status.sock"
+MAX_SOCKET_RESPONSE = 16384
 COMMAND_DESCRIPTIONS = [
     ("status", "Gesamtstatus anzeigen"),
+    ("diagnose", "Geführte Diagnose starten"),
+    ("history", "Statusverlauf anzeigen"),
     ("zigbee", "Zigbee-Funkpfad prüfen"),
     ("containers", "Containerstatus anzeigen"),
     ("backup", "Backupstatus anzeigen"),
@@ -74,18 +86,56 @@ def load_config(path: Path) -> tuple[str, int, int]:
 
 
 def keyboard(command: str | None = None) -> dict:
+    if command in DIAGNOSTIC_VIEWS:
+        rows = [
+            [
+                {"text": "🩺 Gesamtbild", "callback_data": "diag:overview"},
+                {"text": "📡 Zigbee", "callback_data": "diag:zigbee"},
+            ],
+            [
+                {"text": "🐳 Container", "callback_data": "diag:containers"},
+                {"text": "💾 Backup", "callback_data": "diag:backup"},
+            ],
+            [
+                {"text": "🖥️ Host", "callback_data": "diag:host"},
+                {"text": "🕓 Verlauf", "callback_data": "history:24h"},
+            ],
+            [
+                {"text": "↻ Aktualisieren", "callback_data": command.replace("diagnose-", "diag:")},
+                {"text": "☰ Menü", "callback_data": "menu"},
+            ],
+        ]
+        return {"inline_keyboard": rows}
+    if command in HISTORY_VIEWS:
+        period = command.removeprefix("history-")
+        rows = [
+            [
+                {"text": "24 Stunden", "callback_data": "history:24h"},
+                {"text": "7 Tage", "callback_data": "history:7d"},
+            ],
+            [
+                {"text": "🩺 Diagnose", "callback_data": "diag:overview"},
+                {"text": "↻ Aktualisieren", "callback_data": f"history:{period}"},
+            ],
+            [{"text": "☰ Menü", "callback_data": "menu"}],
+        ]
+        return {"inline_keyboard": rows}
     rows = [
         [
             {"text": "📊 Status", "callback_data": "show:status"},
+            {"text": "🩺 Diagnose", "callback_data": "diag:overview"},
+        ],
+        [
             {"text": "📡 Zigbee", "callback_data": "show:zigbee"},
-        ],
-        [
             {"text": "🐳 Container", "callback_data": "show:containers"},
-            {"text": "💾 Backup", "callback_data": "show:backup"},
         ],
         [
+            {"text": "💾 Backup", "callback_data": "show:backup"},
             {"text": "🖥️ Host", "callback_data": "show:host"},
+        ],
+        [
             {"text": "🔔 Warnungen", "callback_data": "show:alerts"},
+            {"text": "🕓 Verlauf", "callback_data": "history:24h"},
         ],
     ]
     if command in STATUS_COMMANDS:
@@ -99,7 +149,8 @@ def keyboard(command: str | None = None) -> dict:
 def menu_text() -> str:
     return (
         "🤖 Raspberry-Pi Operations Bot\n\n"
-        "Phase A ist rein lesend: Ich zeige sichere, zusammengefasste Statusdaten. "
+        "Phase A und B sind rein lesend: Ich zeige sichere Statusdaten, führe durch Diagnosen "
+        "und fasse den Verlauf zusammen. "
         "Ich kann keine Container neu starten, Konfigurationen ändern oder Backups auslösen.\n\n"
         "Wähle einen Bereich oder sende /help."
     )
@@ -107,11 +158,15 @@ def menu_text() -> str:
 
 def help_text() -> str:
     commands = "\n".join(f"/{command} — {description}" for command, description in COMMAND_DESCRIPTIONS)
-    return f"ℹ️ Verfügbare Befehle\n\n{commands}\n\nNormale Textnachrichten öffnen diese Hilfe."
+    return (
+        f"ℹ️ Verfügbare Befehle\n\n{commands}\n\n"
+        "Du kannst auch kurze Sätze wie „Zigbee geht nicht“, „Backup prüfen“ oder "
+        "„Docker Problem“ senden. Die Zuordnung ist deterministisch und bleibt rein lesend."
+    )
 
 
 def run_status(command: str) -> str:
-    if command not in STATUS_COMMANDS:
+    if command not in SERVER_COMMANDS:
         return help_text()
     try:
         chunks: list[bytes] = []
@@ -121,8 +176,8 @@ def run_status(command: str) -> str:
             connection.connect(STATUS_SOCKET)
             connection.sendall(f"{command}\n".encode("ascii"))
             connection.shutdown(socket.SHUT_WR)
-            while received < 4096:
-                chunk = connection.recv(min(1024, 4096 - received))
+            while received < MAX_SOCKET_RESPONSE:
+                chunk = connection.recv(min(1024, MAX_SOCKET_RESPONSE - received))
                 if not chunk:
                     break
                 chunks.append(chunk)
@@ -135,6 +190,23 @@ def run_status(command: str) -> str:
     if output.startswith("OK\n"):
         output = output[3:]
     return output[:3900]
+
+
+def text_intent(text: str) -> str | None:
+    normalized = text.casefold()
+    if "zigbee" in normalized or "koordinator" in normalized:
+        return "diagnose-zigbee"
+    if "backup" in normalized or "borg" in normalized or "sicherung" in normalized:
+        return "diagnose-backup"
+    if any(word in normalized for word in ("container", "docker", "dienst", "service")):
+        return "diagnose-containers"
+    if any(word in normalized for word in ("host", "raspi", "speicher", "temperatur", "ram")):
+        return "diagnose-host"
+    if any(word in normalized for word in ("verlauf", "history", "historie")):
+        return "history-24h"
+    if any(word in normalized for word in ("fehler", "problem", "diagnose", "warum", "kaputt")):
+        return "diagnose-overview"
+    return None
 
 
 def save_offset(path: Path, offset: int) -> None:
@@ -213,13 +285,21 @@ def handle_message(token: str, chat_id: int, message: dict) -> None:
         return
     match = COMMAND_PATTERN.match(text.strip())
     if not match:
-        send_view(token, chat_id, help_text())
+        view = text_intent(text)
+        if view is None:
+            send_view(token, chat_id, help_text())
+        else:
+            send_view(token, chat_id, run_status(view), view)
         return
     command = match.group(1)
     if command in {"start", "menu"}:
         send_view(token, chat_id, menu_text())
     elif command == "help":
         send_view(token, chat_id, help_text())
+    elif command == "diagnose":
+        send_view(token, chat_id, run_status("diagnose-overview"), "diagnose-overview")
+    elif command == "history":
+        send_view(token, chat_id, run_status("history-24h"), "history-24h")
     elif command in STATUS_COMMANDS:
         send_view(token, chat_id, run_status(command), command)
     else:
@@ -244,6 +324,22 @@ def handle_callback(token: str, chat_id: int, callback: dict) -> None:
         command = data[5:]
         if command in STATUS_COMMANDS:
             send_view(token, chat_id, run_status(command), command, message["message_id"])
+        return
+    diagnostic_callbacks = {
+        "diag:overview": "diagnose-overview",
+        "diag:zigbee": "diagnose-zigbee",
+        "diag:containers": "diagnose-containers",
+        "diag:backup": "diagnose-backup",
+        "diag:host": "diagnose-host",
+    }
+    if isinstance(data, str) and data in diagnostic_callbacks:
+        command = diagnostic_callbacks[data]
+        send_view(token, chat_id, run_status(command), command, message["message_id"])
+        return
+    history_callbacks = {"history:24h": "history-24h", "history:7d": "history-7d"}
+    if isinstance(data, str) and data in history_callbacks:
+        command = history_callbacks[data]
+        send_view(token, chat_id, run_status(command), command, message["message_id"])
 
 
 def configure_commands(token: str, chat_id: int) -> None:

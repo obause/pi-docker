@@ -1,4 +1,4 @@
-# Telegram Operations Bot – Phase A
+# Telegram Operations Bot – Phase A und B
 
 Stand: 24. August 2026
 
@@ -21,6 +21,39 @@ Unterstützte Befehle:
 Normale Textnachrichten liefern die Hilfe. Schaltflächen erlauben Navigation
 und Aktualisierung der Statusansicht.
 
+## Phase B: Diagnose und Verlauf
+
+Phase B ergänzt zwei Befehle, ohne die rein lesende Sicherheitsgrenze zu
+verändern:
+
+- `/diagnose` öffnet eine geführte Diagnose für Gesamtbild, Zigbee, Container,
+  Backup und Host
+- `/history` fasst den Health- und Backupverlauf über 24 Stunden oder sieben
+  Tage zusammen
+
+Kurze freie Texte werden deterministisch einem Diagnosepfad zugeordnet. Dazu
+gehören beispielsweise `Zigbee geht nicht`, `Backup prüfen`, `Docker Problem`
+oder `Speicher prüfen`. Es wird dafür weder ein Sprachmodell aufgerufen noch
+eine Shell aus Benutzereingaben gebaut.
+
+Die Diagnoseansichten verbinden aktuelle Zustände mit sicheren, aggregierten
+Signalen:
+
+- Zigbee: MQTT-Verbindung, Alter und Fortschritt des Funkzählers sowie reine
+  Anzahlen für Koordinator-, MQTT-, Timeout- und Gerätekonfigurationssignale
+- Container: Lauf-/Health-Zustände, Neustartzähler und heuristische
+  Fehleranzahlen der letzten Stunde
+- Backup: Timer, letztes Ergebnis, nächster Lauf sowie Start-/Erfolgs-/Fehler-
+  zähler aus dem systemd-Journal
+- Host: Speicher, Inodes, RAM, Swap, Temperatur, Drosselung, fehlgeschlagene
+  Units und aggregierte Kernel-Signale
+
+Der Verlauf basiert auf dem persistenten systemd-Journal. Er zählt erfolgreiche
+und fehlgeschlagene Health-Prüfläufe, ordnet Meldungen festen Kategorien zu und
+zeigt den aktuellen Zustand. Logtexte aus Docker, Zigbee2MQTT, Borg oder dem
+Kernel werden nie an Telegram übertragen. Die Diagnosezähler sind bewusst als
+Hinweise und nicht als eindeutige Einzelereignisse gekennzeichnet.
+
 ## Sicherheitsmodell
 
 `pi-ops-bot.service` läuft als eigener Systembenutzer `pi-ops-bot` mit
@@ -36,7 +69,7 @@ von Telegrams sichtbarem Befehlsmenü unabhängig.
 Für Statusdaten besitzt der Bot weder Docker-Socket-Zugriff noch Sudo-Rechte.
 Ein separater lokaler Dienst läuft als root ohne Netzwerkzugriff und nimmt über
 den gruppengeschützten Unix-Socket `/run/pi-ops-status/status.sock`
-ausschließlich sechs fest codierte Leseabfragen an. Ungültige oder zusätzliche
+ausschließlich fest codierte Leseabfragen an. Ungültige oder zusätzliche
 Argumente werden verworfen. Das Hilfsprogramm bietet keine Shell-, Restart-,
 Schreib-, Update- oder Backup-Aktion und gibt weder Logs der Anwendungen noch
 Secrets, Gerätenamen, Adressen, Mounts oder Umgebungsvariablen aus.
