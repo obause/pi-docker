@@ -1,0 +1,15 @@
+[Unit]
+Description=Raspberry Pi Docker and backup health check
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/pi-health-check
+User=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+set -u
+
+failures=0
+
+fail() {
+    printf 'ERROR %s\n' "$1"
+    failures=$((failures + 1))
+}
+
+check_http() {
+    local name=$1
+    local url=$2
+    local expected=$3
+    local resolve=${4:-}
+    local code
+    local curl_args=(
+        --insecure
+        --silent
+        --show-error
+        --output /dev/null
+        --write-out '%{http_code}'
+        --max-time 8
+    )
+
+    if [[ -n $resolve ]]; then
+        curl_args+=(--resolve "$resolve")
+    fi
+
+    code=$(curl "${curl_args[@]}" "$url" 2>/dev/null) || code=000
+
+    case ",$expected," in
+        *",$code,"*) ;;
+        *) fail "$name returned HTTP $code (expected $expected)" ;;
+    esac
+}
+
+expected_containers=(
+    agent-zero
+    docker-socket-proxy-1
+    dyndns
+    govee2mqtt
+    homeassistant
+    matter-server
+    mosquitto
+    pihole
+    portainer
+    traefik
+    zigbee2mqtt
+)
+
+for container in "${expected_containers[@]}"; do
+    state=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null) || {
+        fail "$container is missing"
+        continue
+    }
+    if [[ $state != running ]]; then
+        fail "$container state is $state"
+        continue
+    fi
+
+    status=$(docker ps --filter "name=^/${container}$" --format '{{.Status}}')
+    if [[ $status == *"(unhealthy)"* ]]; then
+        fail "$container is unhealthy"
+    elif [[ $status == *"(health: starting)"* ]]; then
+        fail "$container health is still starting"
+    fi
+done
+
+if ! systemctl is-active --quiet pi-borg-backup.timer; then
+    fail 'pi-borg-backup.timer is not active'
+fi
+
+backup_result=$(systemctl show pi-borg-backup.service --property Result --value)
+if [[ $backup_result != success ]]; then
+    fail "last Borg backup result is $backup_result"
+fi
+
+root_used=$(df --output=pcent / | tail -n 1 | tr -cd '0-9')
+if [[ -z $root_used || $root_used -ge 85 ]]; then
+    fail "root filesystem usage is ${root_used:-unknown}%"
+fi
+
+check_http homeassistant http://127.0.0.1:8123/ 200
+check_http matter http://127.0.0.1:5580/ 200
+check_http agent-zero http://127.0.0.1:50080/ 200
+check_http pihole https://pihole.bause.lan/ 301,302 pihole.bause.lan:443:127.0.0.1
+check_http zigbee2mqtt https://zigbee.bause.lan/ 200 zigbee.bause.lan:443:127.0.0.1
+check_http portainer https://portainer.bause.lan/ 200 portainer.bause.lan:443:127.0.0.1
+check_http traefik https://traefik.bause.lan/ 302 traefik.bause.lan:443:127.0.0.1
+
+if (( failures > 0 )); then
+    printf 'FAILED checks=%d\n' "$failures"
+    exit 1
+fi
+
+printf 'OK containers=%d root_used=%s%% backup=%s endpoints=7\n' \
+    "${#expected_containers[@]}" "$root_used" "$backup_result"

@@ -23,10 +23,13 @@ Austausch des öffentlichen Deploy-Keys steht in `backup.md`.
 
 - Host: vier CPU-Kerne, 3,7 GiB RAM, cgroup v2
 - elf laufende Container
-- Pi-hole war zunächst der einzige Dienst mit Docker-Healthcheck
-- keine Compose-RAM- oder Prozesslimits
+- Pi-hole war zunächst der einzige Dienst mit Docker-Healthcheck; inzwischen
+  besitzen alle dafür geeigneten Kernkomponenten einen Funktionscheck
+- noch keine allgemein wirksamen RAM-Limits; Agent Zero ist bereits auf zwei
+  CPU-Kerne begrenzt
 - Portainer besitzt direkten Docker-Socket-Zugriff
-- Home Assistant läuft `privileged` mit `NET_ADMIN` und `NET_RAW`
+- Home Assistant läuft nicht mehr privilegiert und behält gezielt `NET_ADMIN`
+  sowie `NET_RAW`
 - Agent Zero ist nicht privilegiert, auf zwei CPUs begrenzt und besitzt keinen
   direkten Docker-Socket-Mount
 
@@ -34,8 +37,11 @@ Docker liefert auf diesem Host derzeit keine nutzbaren Container-RAM-Werte.
 Beim Neuerstellen von Agent Zero meldete Docker außerdem ausdrücklich, dass
 der Kernel Memory-Limits nicht unterstützt beziehungsweise der Controller
 nicht eingehängt ist; das vorhandene `mem_limit: 2g` wurde verworfen.
-Speicherlimits werden deshalb erst nach einer separaten Prüfung der
-Memory-Controller-Konfiguration festgelegt.
+Ursache ist der noch laufende Kernel-Parameter `cgroup_disable=memory`. Die
+aktuelle `/boot/firmware/cmdline.txt` enthält ihn nicht mehr und der Kernel ist
+mit `CONFIG_MEMCG=y` gebaut. Der nächste kontrollierte Neustart sollte den
+Memory-Controller daher ohne weitere Konfigurationsänderung aktivieren. Erst
+danach werden Speicherverbrauch und sinnvolle Limits neu bewertet.
 
 ## Mosquitto und Zigbee2MQTT
 
@@ -104,3 +110,34 @@ Container-Empfehlung für Bluetooth-Kommissionierung ist. Portainer behält den
 direkten Docker-Socket, weil er als vollständige lokale Docker-Verwaltung
 eingesetzt wird. Der Zugriff ist damit bewusst administrativ und nicht
 Least-Privilege.
+
+## Lokaler Gesundheitsmonitor
+
+`scripts/pi-health-check` prüft alle fünf Minuten unabhängig von Docker
+Compose den Betriebszustand des Hosts:
+
+- alle elf erwarteten Container müssen laufen; vorhandene Docker-Healthchecks
+  dürfen weder `unhealthy` noch dauerhaft `starting` sein
+- der Borg-Timer muss aktiv und der letzte Backup-Lauf erfolgreich sein
+- die Root-Partition darf nicht zu mindestens 85 Prozent belegt sein
+- Home Assistant, Matter und Agent Zero werden über ihre Loopback-Endpunkte
+  geprüft
+- Pi-hole, Zigbee2MQTT, Portainer und Traefik werden über ihre lokalen
+  Traefik-Routen geprüft; `--resolve` macht diese Tests unabhängig von DNS
+
+Der gehärtete One-shot-Dienst `pi-health-check.service` läuft als root, damit
+er Docker und systemd auslesen kann. `pi-health-check.timer` startet ihn fünf
+Minuten nach dem Boot und danach im Fünf-Minuten-Takt. Erfolg und konkrete
+Fehler stehen im Journal:
+
+```sh
+systemctl status pi-health-check.timer
+journalctl -u pi-health-check.service -n 30 --no-pager
+sudo systemctl start pi-health-check.service
+```
+
+Die installierten Dateien liegen unter `/usr/local/sbin` beziehungsweise
+`/etc/systemd/system`; ihre versionierten Quellen liegen in `scripts/` und
+`systemd/`. Benachrichtigungen werden separat ergänzt, sobald der gewünschte
+Kanal feststeht. Bis dahin liefert der Monitor lokal eine einheitliche,
+maschinenlesbare Grundlage ohne Zugangsdaten.
