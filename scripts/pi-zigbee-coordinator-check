@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+set -u
+
+state_dir=/var/lib/pi-health-monitor
+state_file=$state_dir/zigbee-traffic.state
+max_snapshot_age=900
+max_quiet_time=1200
+now=$(date +%s)
+
+snapshot=$(docker exec zigbee2mqtt node /app/zigbee-health-snapshot.cjs 2>/dev/null)
+snapshot_result=$?
+if (( snapshot_result != 0 )) || [[ ! $snapshot =~ ^[0-9]+\ [0-9]+\ [01]\ [0-9]+\ [0-9]+\ [0-9]+$ ]]; then
+    printf 'ERROR Zigbee radio health snapshot is unavailable\n'
+    exit 1
+fi
+
+read -r response_time process_uptime mqtt_connected device_count active_devices total_messages <<< "$snapshot"
+
+if (( mqtt_connected != 1 )); then
+    printf 'ERROR Zigbee2MQTT is disconnected from MQTT\n'
+    exit 1
+fi
+
+snapshot_age=$((now - response_time))
+if (( snapshot_age < -60 )); then
+    printf 'ERROR Zigbee health timestamp is in the future\n'
+    exit 1
+fi
+
+started_at=$(docker inspect --format '{{.State.StartedAt}}' zigbee2mqtt 2>/dev/null)
+started_epoch=$(date -d "$started_at" +%s 2>/dev/null || printf '0')
+container_uptime=$((now - started_epoch))
+
+if (( snapshot_age > max_snapshot_age )); then
+    if (( started_epoch > 0 && container_uptime < max_snapshot_age )); then
+        printf 'OK zigbee_radio=startup_grace snapshot_age=%ss\n' "$snapshot_age"
+        exit 0
+    fi
+    printf 'ERROR Zigbee health snapshot is stale for %ss\n' "$snapshot_age"
+    exit 1
+fi
+
+previous_response=0
+previous_uptime=0
+previous_total=0
+last_progress=$response_time
+if [[ -r $state_file ]]; then
+    read -r previous_response previous_uptime previous_total last_progress < "$state_file" || {
+        previous_response=0
+        previous_uptime=0
+        previous_total=0
+        last_progress=$response_time
+    }
+fi
+
+if (( process_uptime < previous_uptime || total_messages < previous_total )); then
+    last_progress=$response_time
+elif (( total_messages > previous_total )); then
+    last_progress=$response_time
+elif (( previous_response == 0 )); then
+    last_progress=$response_time
+fi
+
+if [[ ! -d $state_dir ]]; then
+    printf 'ERROR Zigbee health state directory is unavailable\n'
+    exit 1
+fi
+
+umask 027
+state_tmp=$(mktemp "$state_dir/.zigbee-traffic.XXXXXX")
+printf '%s %s %s %s\n' \
+    "$response_time" "$process_uptime" "$total_messages" "$last_progress" > "$state_tmp"
+mv "$state_tmp" "$state_file"
+
+quiet_time=$((response_time - last_progress))
+if (( quiet_time >= max_quiet_time )); then
+    printf 'ERROR Zigbee radio traffic stalled for %ss across %s tracked devices\n' \
+        "$quiet_time" "$device_count"
+    exit 1
+fi
+
+printf 'OK zigbee_radio=traffic devices=%s active=%s quiet_for=%ss snapshot_age=%ss\n' \
+    "$device_count" "$active_devices" "$quiet_time" "$snapshot_age"

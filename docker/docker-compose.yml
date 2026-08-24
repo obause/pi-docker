@@ -236,6 +236,7 @@ services:
     volumes:
       - /srv/pi-docker/zigbee2mqtt/data:/app/data
       - /run/udev:/run/udev:ro
+      - ../scripts/zigbee-health-snapshot.cjs:/app/zigbee-health-snapshot.cjs:ro
     # Wenn du USB-Dongle nutzt, devices freigeben (by-id verwenden!):
     # devices:
     #   - /dev/serial/by-id/usb-<DEIN_DONGLE>:/dev/ttyUSB0

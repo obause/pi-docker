@@ -124,6 +124,8 @@ Compose den Betriebszustand des Hosts:
 
 - alle elf erwarteten Container müssen laufen; vorhandene Docker-Healthchecks
   dürfen weder `unhealthy` noch dauerhaft `starting` sein
+- der aggregierte reale Zigbee-Funkverkehr darf nicht über zwei Health-
+  Intervalle vollständig stillstehen
 - der Borg-Timer muss aktiv und der letzte Backup-Lauf erfolgreich sein
 - Fail2ban muss aktiv sein
 - die Root-Partition darf nicht zu mindestens 85 Prozent belegt sein
@@ -148,6 +150,34 @@ Die installierten Dateien liegen unter `/usr/local/sbin` beziehungsweise
 `systemd/`. Benachrichtigungen werden separat ergänzt, sobald der gewünschte
 Kanal feststeht. Bis dahin liefert der Monitor lokal eine einheitliche,
 maschinenlesbare Grundlage ohne Zugangsdaten.
+
+### Zigbee-Koordinator-Watchdog
+
+Der Koordinator verwendet Z-Stack über TCP. Sein eigenes Webfrontend und auch
+das Zigbee2MQTT-Frontend können erreichbar bleiben, obwohl der Funkpfad keine
+Geräte mehr erreicht. Ein reiner HTTP- oder TCP-Test erkennt diesen Zustand
+nicht.
+
+Zigbee2MQTT veröffentlicht unter `bridge/health` aggregierte Zähler real
+empfangener Gerätenachrichten. `scripts/zigbee-health-snapshot.cjs` liest den
+retained Health-Datensatz über die bereits im Container vorhandene MQTT-
+Verbindung und gibt ausschließlich Zeit- und Summenwerte aus. IEEE-Adressen,
+Gerätenamen und MQTT-Zugangsdaten verlassen den Container nicht.
+
+`scripts/pi-zigbee-coordinator-check` speichert den letzten Gesamtzähler unter
+`/var/lib/pi-health-monitor/zigbee-traffic.state`. Steigt er über zwei reguläre
+Zigbee2MQTT-Health-Intervalle, derzeit 20 Minuten, nicht an, schlägt der
+Gesamthealthcheck fehl und der vorhandene Zustandsmelder sendet einmalig eine
+Telegram-Warnung. Sobald wieder Funknachrichten eintreffen, folgt die normale
+grüne Entwarnung. Ein maximal 15 Minuten alter Health-Datensatz wird erwartet;
+nach einem Containerstart gilt eine entsprechende Anlaufphase.
+
+Die offizielle `bridge/request/coordinator_check`-Funktion wird nicht periodisch
+verwendet. Sie erzeugt bei der installierten Z-Stack-Implementierung intern ein
+vollständiges Koordinator-Backup und war im Test nicht innerhalb von 20
+Sekunden beendet. Der normale `bridge/request/health_check` prüft in Version
+2.9.2 wiederum keinen Funkverkehr, sondern antwortet statisch mit
+`healthy: true`.
 
 ## Fail2ban
 

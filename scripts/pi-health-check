@@ -67,6 +67,11 @@ for container in "${expected_containers[@]}"; do
     fi
 done
 
+zigbee_result=$(/usr/local/sbin/pi-zigbee-coordinator-check 2>&1)
+if (( $? != 0 )); then
+    fail "${zigbee_result#ERROR }"
+fi
+
 if ! systemctl is-active --quiet pi-borg-backup.timer; then
     fail 'pi-borg-backup.timer is not active'
 fi
@@ -98,5 +103,5 @@ if (( failures > 0 )); then
     exit 1
 fi
 
-printf 'OK containers=%d root_used=%s%% backup=%s fail2ban=active endpoints=7\n' \
+printf 'OK containers=%d root_used=%s%% backup=%s fail2ban=active zigbee_radio=ok endpoints=7\n' \
     "${#expected_containers[@]}" "$root_used" "$backup_result"
