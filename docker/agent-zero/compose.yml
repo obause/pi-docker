@@ -5,7 +5,9 @@ services:
       dockerfile: Dockerfile
     image: agent-zero-pi:v2.10-torch2.4.1
     container_name: agent-zero
-    restart: unless-stopped
+    # Auf dem 4-GB-Pi nur noch bei Bedarf manuell starten. Container und
+    # agent-zero-data bleiben fuer eine spaetere Migration erhalten.
+    restart: "no"
     healthcheck:
       test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:80/', timeout=3)"]
       interval: 30s

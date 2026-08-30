@@ -36,7 +36,6 @@ check_http() {
 }
 
 expected_containers=(
-    agent-zero
     docker-socket-proxy-1
     dyndns
     govee2mqtt
@@ -50,7 +49,7 @@ expected_containers=(
 )
 
 for container in "${expected_containers[@]}"; do
-    state=$(docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null) || {
+    state=$(timeout 10 docker inspect --format '{{.State.Status}}' "$container" 2>/dev/null) || {
         fail "$container is missing"
         continue
     }
@@ -59,7 +58,10 @@ for container in "${expected_containers[@]}"; do
         continue
     fi
 
-    status=$(docker ps --filter "name=^/${container}$" --format '{{.Status}}')
+    status=$(timeout 10 docker ps --filter "name=^/${container}$" --format '{{.Status}}') || {
+        fail "Docker did not answer while checking $container"
+        continue
+    }
     if [[ $status == *"(unhealthy)"* ]]; then
         fail "$container is unhealthy"
     elif [[ $status == *"(health: starting)"* ]]; then
@@ -67,7 +69,7 @@ for container in "${expected_containers[@]}"; do
     fi
 done
 
-zigbee_result=$(/usr/local/sbin/pi-zigbee-coordinator-check 2>&1)
+zigbee_result=$(timeout 30 /usr/local/sbin/pi-zigbee-coordinator-check 2>&1)
 if (( $? != 0 )); then
     fail "${zigbee_result#ERROR }"
 fi
@@ -90,9 +92,47 @@ if [[ -z $root_used || $root_used -ge 85 ]]; then
     fail "root filesystem usage is ${root_used:-unknown}%"
 fi
 
+mem_total_kib=$(awk '/^MemTotal:/ {print $2}' /proc/meminfo)
+mem_available_kib=$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)
+mem_available_pct=$((100 * mem_available_kib / mem_total_kib))
+if (( mem_available_pct < 10 )); then
+    fail "available memory is ${mem_available_pct}%"
+fi
+
+swap_total_kib=$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)
+swap_free_kib=$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)
+swap_used_pct=0
+if (( swap_total_kib > 0 )); then
+    swap_used_pct=$((100 * (swap_total_kib - swap_free_kib) / swap_total_kib))
+fi
+if (( swap_used_pct >= 95 && mem_available_pct < 20 )); then
+    fail "swap is ${swap_used_pct}% used while available memory is ${mem_available_pct}%"
+fi
+
+check_dns() {
+    local protocol=$1
+    local -a protocol_args=()
+    local answer
+
+    if [[ $protocol == tcp ]]; then
+        protocol_args+=(+tcp)
+    fi
+
+    answer=$(timeout 8 docker exec pihole dig "${protocol_args[@]}" \
+        +time=2 +tries=1 @127.0.0.1 example.com A +short 2>/dev/null) || {
+        fail "Pi-hole DNS over $protocol did not answer"
+        return
+    }
+    if [[ -z $answer ]]; then
+        fail "Pi-hole DNS over $protocol returned no address"
+    fi
+}
+
+check_dns udp
+check_dns tcp
+
 check_http homeassistant http://127.0.0.1:8123/ 200
 check_http matter http://127.0.0.1:5580/ 200
-check_http agent-zero http://127.0.0.1:50080/ 200
 check_http pihole https://pihole.bause.lan/ 301,302 pihole.bause.lan:443:127.0.0.1
 check_http zigbee2mqtt https://zigbee.bause.lan/ 200 zigbee.bause.lan:443:127.0.0.1
 check_http portainer https://portainer.bause.lan/ 200 portainer.bause.lan:443:127.0.0.1
@@ -103,5 +143,6 @@ if (( failures > 0 )); then
     exit 1
 fi
 
-printf 'OK containers=%d root_used=%s%% backup=%s fail2ban=active zigbee_radio=ok endpoints=7\n' \
-    "${#expected_containers[@]}" "$root_used" "$backup_result"
+printf 'OK containers=%d root_used=%s%% mem_available=%s%% swap_used=%s%% backup=%s fail2ban=active dns=udp,tcp zigbee_radio=ok endpoints=6\n' \
+    "${#expected_containers[@]}" "$root_used" "$mem_available_pct" \
+    "$swap_used_pct" "$backup_result"

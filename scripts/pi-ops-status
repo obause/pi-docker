@@ -2,7 +2,6 @@
 set -u
 
 expected_containers=(
-    agent-zero
     docker-socket-proxy-1
     dyndns
     govee2mqtt

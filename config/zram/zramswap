@@ -1,0 +1,6 @@
+# Keep swap traffic off the Raspberry Pi SD card. zram-tools interprets
+# PERCENT as the uncompressed block-device size; physical RAM usage is only
+# the compressed data actually stored in it.
+ALGO=lz4
+PERCENT=25
+PRIORITY=100

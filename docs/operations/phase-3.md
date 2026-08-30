@@ -22,16 +22,15 @@ Austausch des öffentlichen Deploy-Keys steht in `backup.md`.
 ## Reliability-Inventur
 
 - Host: vier CPU-Kerne, 3,7 GiB RAM, cgroup v2
-- elf laufende Container
+- zehn erwartete laufende Container; Agent Zero ist optional gestoppt
 - Pi-hole war zunächst der einzige Dienst mit Docker-Healthcheck; inzwischen
   besitzen alle dafür geeigneten Kernkomponenten einen Funktionscheck
-- noch keine allgemein wirksamen RAM-Limits; Agent Zero ist bereits auf zwei
-  CPU-Kerne begrenzt
+- noch keine allgemein wirksamen RAM-Limits
 - Portainer besitzt direkten Docker-Socket-Zugriff
 - Home Assistant läuft nicht mehr privilegiert und behält gezielt `NET_ADMIN`
   sowie `NET_RAW`
-- Agent Zero ist nicht privilegiert, auf zwei CPUs begrenzt und besitzt keinen
-  direkten Docker-Socket-Mount
+- der erhaltene Agent-Zero-Container ist nicht privilegiert, auf zwei CPUs
+  begrenzt und besitzt keinen direkten Docker-Socket-Mount
 
 Docker liefert auf diesem Host derzeit keine nutzbaren Container-RAM-Werte.
 Beim Neuerstellen von Agent Zero meldete Docker außerdem ausdrücklich, dass
@@ -82,6 +81,27 @@ Startfenster beträgt deshalb fünf Minuten. Datenvolume und OAuth-/Chat-Zustand
 blieben unverändert; nach der Initialisierung waren Healthcheck und die nur an
 `127.0.0.1:50080` veröffentlichte Oberfläche healthy beziehungsweise HTTP 200.
 
+### Agent Zero auf dem 4-GB-Pi stillgelegt
+
+Am 30. August wurde Agent Zero als dauerhafter Dienst reversibel stillgelegt.
+Nach rund 19 Stunden Laufzeit waren 944 von 949 MiB ZRAM belegt, obwohl gerade
+keine Agent-Aufgabe lief. Die beiden groessten Agent-Zero-Prozesse belegten
+zusammen rund 850 MiB Resident Memory; weitere kalte Speicherseiten lagen
+bereits in ZRAM. Gleichzeitig standen dem Host nur 78 MiB freier RAM zur
+Verfuegung.
+
+Unmittelbar nach dem Stoppen stieg der freie RAM auf rund 901 MiB und der
+verfuegbare RAM auf 1,8 GiB; die ZRAM-Belegung sank um etwa 545 MiB. Damit ist
+Agent Zero fuer diesen gemeinsam mit Home Assistant und den Infrastruktur-
+Diensten genutzten 4-GB-Host kein sinnvoller Always-on-Dienst.
+
+Der Container besitzt `restart: "no"` und wird weder automatisch gestartet
+noch vom Produktiv-Healthcheck erwartet. Image, Container und das gesicherte
+Volume `agent-zero-data` bleiben fuer einen manuellen Test oder eine spaetere
+Migration auf das NAS erhalten. Das separate Telegram-Ops-System bleibt aktiv;
+Agent Zero kann dort weiterhin als optionale Wartungsaktion manuell gestartet
+beziehungsweise neu gestartet werden.
+
 ## Traefik und Docker-Socket-Proxy
 
 Der Socket-Proxy prüft lokal Dockers `_ping`-Endpunkt auf Port 2375. Traefik
@@ -122,15 +142,14 @@ Least-Privilege.
 `scripts/pi-health-check` prüft alle fünf Minuten unabhängig von Docker
 Compose den Betriebszustand des Hosts:
 
-- alle elf erwarteten Container müssen laufen; vorhandene Docker-Healthchecks
+- alle zehn erwarteten Container müssen laufen; vorhandene Docker-Healthchecks
   dürfen weder `unhealthy` noch dauerhaft `starting` sein
 - der aggregierte reale Zigbee-Funkverkehr darf nicht über zwei Health-
   Intervalle vollständig stillstehen
 - der Borg-Timer muss aktiv und der letzte Backup-Lauf erfolgreich sein
 - Fail2ban muss aktiv sein
 - die Root-Partition darf nicht zu mindestens 85 Prozent belegt sein
-- Home Assistant, Matter und Agent Zero werden über ihre Loopback-Endpunkte
-  geprüft
+- Home Assistant und Matter werden über ihre Loopback-Endpunkte geprüft
 - Pi-hole, Zigbee2MQTT, Portainer und Traefik werden über ihre lokalen
   Traefik-Routen geprüft; `--resolve` macht diese Tests unabhängig von DNS
 
@@ -171,6 +190,16 @@ Gesamthealthcheck fehl und der vorhandene Zustandsmelder sendet einmalig eine
 Telegram-Warnung. Sobald wieder Funknachrichten eintreffen, folgt die normale
 grüne Entwarnung. Ein maximal 15 Minuten alter Health-Datensatz wird erwartet;
 nach einem Containerstart gilt eine entsprechende Anlaufphase.
+
+Am 30. August erkannte der Watchdog einen realen Funkstillstand von 40 Minuten,
+waehrend Weboberflaeche, MQTT und Docker-Healthcheck weiterhin gesund wirkten.
+Der Z-Stack-Adapter nahm zwar die TCP-Verbindung an, beantwortete jedoch weder
+`SYS ping` noch Versions- und Datenanfragen. Ein alleiniger Neustart von
+Zigbee2MQTT half nicht. Der Neustart der Zigbee-Komponente ueber die
+SMLIGHT-SLZB-Weboberflaeche stellte Adapterantworten und reale
+Geraetemeldungen wieder her. Der Gesamtmonitor wechselte anschliessend auf
+`healthy` und verarbeitete die Telegram-Entwarnung. Damit ist das beabsichtigte
+Fehlerbild des Funk-Watchdogs praktisch bestaetigt.
 
 Die offizielle `bridge/request/coordinator_check`-Funktion wird nicht periodisch
 verwendet. Sie erzeugt bei der installierten Z-Stack-Implementierung intern ein

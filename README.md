@@ -21,12 +21,20 @@ docker compose logs --since 30m SERVICE
 docker compose config -q
 ```
 
-Agent Zero läuft als separates Compose-Projekt:
+Agent Zero ist als separates Compose-Projekt installiert, auf dem 4-GB-Pi
+jedoch standardmaessig gestoppt. Container, Image und das persistente Volume
+`agent-zero-data` bleiben fuer eine spaetere Migration erhalten. Ein manueller
+Teststart ist weiterhin moeglich; nach der Nutzung muss der Dienst wieder
+gestoppt werden:
 
 ```bash
 cd /home/obause/pi-docker/docker/agent-zero
-docker compose ps
+docker compose up -d agent-zero
+docker compose stop agent-zero
 ```
+
+Agent Zero gehoert nicht mehr zu den erwarteten Produktivdiensten und wird vom
+normalen Host-Healthcheck nicht als Ausfall gemeldet.
 
 Backupstatus:
 
